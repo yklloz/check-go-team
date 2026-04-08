@@ -27,6 +27,7 @@ import {
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import ProfilePage from './pages/ProfilePage';
+import SidePanel from './components/SidePanel';
 
 // --- 초기 데이터 및 상수 ---
 const PLACES = [
@@ -491,98 +492,6 @@ function InventoryTable({ data }) {
           ))}
         </tbody>
       </table>
-    </div>
-  );
-}
-
-function SidePanel({ isOpen, onClose, isDarkMode }) {
-  return (
-    <div className={`fixed inset-y-0 right-0 w-[450px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-      <div className="flex items-center justify-between p-8 border-b border-gray-50 dark:border-[#2F2F2F]">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight">품목 스마트 등록</h2>
-          <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-widest">New Inventory Entry</p>
-        </div>
-        <button onClick={onClose} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all active:scale-90">
-          <X size={24} className="text-gray-400 hover:text-black dark:hover:text-white" />
-        </button>
-      </div>
-      
-      <div className="p-8 overflow-y-auto h-[calc(100%-100px)] space-y-8 custom-scrollbar">
-        {/* OCR Area */}
-        <div className="p-12 border-3 border-dashed border-gray-100 dark:border-gray-800 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 text-gray-400 hover:border-blue-400 hover:bg-blue-50/20 dark:hover:bg-blue-900/10 transition-all cursor-pointer group shadow-sm">
-          <div className="w-16 h-16 rounded-[1.5rem] bg-gray-50 dark:bg-gray-800 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xl group-hover:scale-110">
-            <Camera size={32} />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-black text-gray-600 dark:text-gray-300">영수증 촬영/업로드</p>
-            <p className="text-[11px] mt-1 font-medium">LLM이 품목과 가격을 자동 분석합니다</p>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 text-white rounded-full">
-            <Sparkles size={12} />
-            <span className="text-[10px] font-black uppercase tracking-widest">Smart Scan</span>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <InputGroup label="상품 이름" placeholder="예: 닭가슴살 스테이크" />
-          <div className="grid grid-cols-2 gap-5">
-            <InputGroup label="입고 수량" type="number" placeholder="0" />
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">카테고리 분류</label>
-              <select className="w-full p-4 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 font-bold transition-all">
-                <option>식료품</option>
-                <option>생필품</option>
-                <option>화장품</option>
-              </select>
-            </div>
-          </div>
-          <InputGroup label="구매 쇼핑몰" placeholder="예: 쿠팡, 이마트, 네이버" />
-          <InputGroup label="최종 결제 금액" type="number" placeholder="₩ 00,000" />
-          
-          <div className="p-6 bg-gray-50/50 dark:bg-gray-900/50 rounded-[2rem] space-y-4 border border-gray-100 dark:border-gray-800">
-            <div className="flex items-center justify-between">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">단위 가격 계산기</p>
-              <CheckCircle2 size={16} className="text-blue-500" />
-            </div>
-            <div className="flex gap-3">
-              <input type="text" placeholder="용량 (예: 200)" className="flex-1 p-4 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 font-bold shadow-inner" />
-              <select className="w-28 p-4 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 font-bold">
-                <option>g</option>
-                <option>ml</option>
-                <option>개</option>
-              </select>
-            </div>
-            <div className="flex items-center justify-between px-2">
-              <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase">Unit Price</p>
-              <p className="text-xl font-black tracking-tight">₩ 0 / 100g</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 pt-4">
-          <button onClick={onClose} className="py-4 bg-gray-50 dark:bg-gray-800 text-gray-500 font-black rounded-2xl hover:bg-gray-100 transition-all text-sm uppercase tracking-widest">Cancel</button>
-          <button 
-            onClick={onClose}
-            className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
-          >
-            Register Now
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InputGroup({ label, placeholder, type = "text" }) {
-  return (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</label>
-      <input 
-        type={type} 
-        placeholder={placeholder} 
-        className="w-full p-4 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 font-bold shadow-inner" 
-      />
     </div>
   );
 }

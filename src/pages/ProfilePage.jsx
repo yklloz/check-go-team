@@ -1,22 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Camera, ArrowLeft, User, Mail, PenLine } from 'lucide-react'; // 아이콘 추가됨
 
 const ProfilePage = ({ setView }) => {
   const [profileImage, setProfileImage] = useState(null); 
   const [nickname, setNickname] = useState(''); 
-  const [name, setName] = useState('김첵고'); // 가입 시 입력한 이름이라 가정
+  const [fullName, setName] = useState('김첵고'); // 가입 시 입력한 이름이라 가정
   const [email, setEmail] = useState('user@chekgo.com'); // 가입 이메일이라 가정
 
-  const handleImageUpload = (e) => {
-    // 사진을 업로드하는 로직 (다음 단계에서 구현)
-    alert('사진 업로드 기능은 준비 중입니다!');
+  // 숨겨진 input 태그를 조종할 리모컨 생성
+  const fileInputRef = useRef(null); 
+
+  // 2. 로직 함수 ---
+
+  // 버튼을 클릭했을 때 실행되는 함수
+  const handleProfileClick = () => {
+    // 리모컨(fileInputRef)을 통해 숨겨진 input을 클릭.
+    fileInputRef.current.click();
+  };
+
+  const handleImageChange = (e) => {
+    // 사용자가 선택한 첫 번째 파일 가져오기
+    const file = e.target.files[0]; 
+    
+    if (file) {
+      // 1. 나중에 백엔드(수퍼베이스)로 보낼 진짜 파일을 State에 얌전히 보관해둠
+      setImageFile(file);
+
+      // 2. 화면에 바로 띄워주기 위해 파일을 브라우저가 읽을 수 있는 '임시 주소'로 변환
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // 변환이 끝나면 profileImage State에 임시 주소를 넣음 -> 화면에 사진이 짠!
+        setProfileImage(reader.result); 
+      };
+      reader.readAsDataURL(file); // 파일 읽기 시작
+    }
   };
 
   const handleSave = () => {
-    console.log('저장된 데이터:', { profileImage, nickname, name, email });
+    // 나중에 백엔드로 보낼 때 imageFile을 같이 보내면 됨.
+    console.log('저장된 데이터:', { 
+      imageFile: imageFile, // 실제 파일 (이걸 수퍼베이스 Storage에 올림)
+      nickname, 
+      full_name: fullName, 
+      email 
+    });
     alert('프로필 수정 완료');
   };
 
+  // --- 3. UI 렌더링 ---
   return (
     <div className="max-w-2xl mx-auto p-8">
       {/* 뒤로 가기 버튼 */}
@@ -34,8 +65,18 @@ const ProfilePage = ({ setView }) => {
 
         {/* 1. 프로필 사진 영역 */}
         <div className="flex flex-col items-center justify-center gap-4">
-          {/* 사진 동그라미 */}
-          <div onClick={handleImageUpload} className="relative group cursor-pointer">
+          
+          {/* 여기에 보이지 않는 진짜 파일 업로드 버튼을 숨겨둠 */}
+          <input 
+            type="file" 
+            accept="image/*" // 이미지만 선택할 수 있게 제한
+            className="hidden" // Tailwind의 투명 망토
+            ref={fileInputRef} // 리모컨 연결!
+            onChange={handleImageChange} // 사진을 고르면 이 함수 실행
+          />
+
+          {/* 사진 동그라미 (클릭하면 handleProfileClick 실행) */}
+          <div onClick={handleProfileClick} className="relative group cursor-pointer">
             <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-white dark:border-[#121212] shadow-lg flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-100 dark:group-hover:border-blue-900">
               {profileImage ? (
                 <img src={profileImage} alt="프로필" className="w-full h-full object-cover" />
@@ -48,7 +89,7 @@ const ProfilePage = ({ setView }) => {
               <Camera size={14} />
             </div>
           </div>
-          <p className="text-xs font-bold text-gray-400">프로필 사진등록</p>
+          <p className="text-xs font-bold text-gray-400">사진 변경 (선택)</p>
         </div>
 
         {/* 2. 정보 입력 영역 */}
@@ -75,7 +116,7 @@ const ProfilePage = ({ setView }) => {
               <User className="absolute left-4 top-4 text-gray-400" size={18} />
               <input 
                 type="text" 
-                value={name} //  화면에 보여줄 값은 무조건 name State
+                value={fullName} //  화면에 보여줄 값은 무조건 name State
                 onChange={(e) => setName(e.target.value)} // 사용자가 타자를 치면 발동!
                 placeholder="이름을 입력하세요" 
                 className="w-full p-4 pl-12 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-900 dark:text-white" 

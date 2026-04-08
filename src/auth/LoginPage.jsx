@@ -1,5 +1,23 @@
 ﻿import React from 'react';
-import { Mail, Lock } from 'lucide-react'; // 아이콘 import 필수!
+import { Mail, Lock } from 'lucide-react'; 
+//import { supabase } from '../supabaseClient'; // (나중에 만들 연결 파일)
+
+/* 
+// 추후 소셜 로그인 기능을 구현할 때 사용할 함수.
+const handleSocialLogin = async (provider) => { // provider는 'google', 'kakao', 'apple'
+  try {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: provider,
+      options: {
+        redirectTo: 'http://localhost:5173/' // 로그인 후 돌아올 주소
+      }
+    });
+    if (error) throw error;
+  } catch (error) {
+    console.error("소셜 로그인 에러:", error.message);
+  }
+};
+*/
 
 const LoginPage = ({ setView }) => {
   return (

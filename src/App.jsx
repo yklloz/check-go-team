@@ -24,6 +24,10 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
+import LoginPage from './auth/LoginPage';
+import SignupPage from './auth/SignupPage';
+import ProfilePage from './pages/ProfilePage';
+
 // --- 초기 데이터 및 상수 ---
 const PLACES = [
   { id: 'home', name: '집', icon: <Home size={48} />, smallIcon: <Home size={18} />, color: 'bg-green-500', isShared: true, members: ['나', '엄마', '아빠'] },
@@ -75,30 +79,22 @@ export default function App() {
     setIsSidePanelOpen(false);
   };
 
-  // 로그인 화면
-  if (view === 'login') {
+
+   if (view === 'login') {
+    return <LoginPage setView={setView} />;
+  }
+
+  // 회원가입 화면 (새로 추가)
+  if (view === 'signup') {
     return (
-      <div className="min-h-screen flex items-center justify-center transition-colors bg-gray-50 text-gray-900 dark:bg-[#121212] dark:text-white">
-        <div className="max-w-md w-full p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold tracking-tighter mb-2"> 첵고</h1>
-            <p className="text-gray-500 dark:text-gray-400 font-medium text-sm">LLM 기반 지능형 재고 관리</p>
-          </div>
-          <div className="space-y-4">
-            <input type="text" placeholder="이메일" className="w-full p-3.5 rounded-xl border dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-            <input type="password" placeholder="비밀번호" className="w-full p-3.5 rounded-xl border dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
-            <button 
-              onClick={() => setView('place-select')}
-              className="w-full py-3.5 bg-black dark:bg-white dark:text-black text-white rounded-xl font-bold hover:opacity-90 transition-opacity mt-2"
-            >
-              로그인
-            </button>
-            <div className="text-sm text-center text-gray-500 mt-4 font-medium">
-              계정이 없으신가요? <span className="text-blue-500 cursor-pointer hover:underline">회원가입</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SignupPage 
+        setView={setView} 
+        onSignupSuccess={() => {
+          // 실제 개발 시에는 여기에 회원가입 API 연동 로직이 들어감
+          alert('가입이 완료되었습니다! 로그인해주세요.');
+          setView('login');
+        }} 
+      />
     );
   }
 
@@ -428,6 +424,14 @@ export default function App() {
     );
   }
 
+  if (view === 'profile') {
+    return (
+      <Layout>
+        <ProfilePage setView={setView} />
+      </Layout>
+    );
+  }
+  
   return (
     <Layout>
       <div className="p-24 text-center">

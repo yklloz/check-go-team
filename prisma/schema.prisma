@@ -1,9 +1,101 @@
+// prisma/schema.prisma
+
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["multiSchema"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  schemas  = ["public"]
+  provider = "sqlite"
+}
+
+model profiles {
+  account_id String  @unique
+  email      String? @unique
+  name       String?
+  avatar     String?
+}
+
+model categories {
+  id       Int        @id @default(autoincrement())
+  name     String     @unique
+  products products[]
+}
+
+model places {
+  id              Int               @id @default(autoincrement())
+  name            String
+  place_type      String?
+  inventories     inventories[]
+  purchase_orders purchase_orders[]
+  stock_movements stock_movements[]
+}
+
+model stores {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
+  purchase_orders purchase_orders[]
+}
+
+model products {
+  id                   Int                    @id @default(autoincrement())
+  category_id          Int
+  name                 String
+  brand                String?
+  unit                 String
+  is_food              Boolean                @default(false)
+  low_stock_threshold  Float                  @default(1)
+  category             categories             @relation(fields: [category_id], references: [id])
+  inventories          inventories[]
+  purchase_order_items purchase_order_items[]
+  stock_movements      stock_movements[]
+}
+
+model inventories {
+  id               Int      @id @default(autoincrement())
+  place_id         Int
+  product_id       Int
+  current_quantity Float    @default(0)
+  updated_at       DateTime @default(now())
+  place            places   @relation(fields: [place_id], references: [id], onDelete: Cascade)
+  product          products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@unique([place_id, product_id])
+}
+
+model purchase_orders {
+  id                   Int                    @id @default(autoincrement())
+  place_id             Int
+  store_id             Int?
+  purchased_at         DateTime               @default(now())
+  total_amount         Float?
+  note                 String?
+  place                places                 @relation(fields: [place_id], references: [id])
+  store                stores?                @relation(fields: [store_id], references: [id])
+  purchase_order_items purchase_order_items[]
+}
+
+model purchase_order_items {
+  id                Int              @id @default(autoincrement())
+  purchase_order_id Int
+  product_id        Int
+  quantity          Float
+  unit_price        Float
+  line_total        Float?
+  purchase_order    purchase_orders  @relation(fields: [purchase_order_id], references: [id], onDelete: Cascade)
+  product           products         @relation(fields: [product_id], references: [id])
+  stock_movements   stock_movements[]
+}
+
+model stock_movements {
+  id                     Int                   @id @default(autoincrement())
+  product_id             Int
+  place_id               Int
+  movement_type          String
+  quantity               Float
+  moved_at               DateTime              @default(now())
+  purchase_order_item_id Int?
+  note                   String?
+  product                products              @relation(fields: [product_id], references: [id])
+  place                  places                @relation(fields: [place_id], references: [id], onDelete: Cascade)
+  purchase_order_item    purchase_order_items? @relation(fields: [purchase_order_item_id], references: [id])
 }

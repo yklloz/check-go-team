@@ -26,7 +26,7 @@ export class AuthService {
 
     // 3. 있으면 정보 업데이트
     return await this.prisma.profiles.update({
-      where: { id: profile.id },
+      where: { account_id: profile.account_id },
       data: {
         name: user_metadata.full_name,
         avatar: user_metadata.avatar_url,

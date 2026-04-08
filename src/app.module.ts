@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PrismaModule } from './prisma/prisma.module'; // 추가
-import { AuthModule } from './auth/auth.module'; // 곧 만들 거예요!
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+
+import { ReceiptController } from './receipt/receipt.controller';
+import { ReceiptService } from './receipt/receipt.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule], // 여기에 추가
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [PrismaModule, AuthModule],
+
+  controllers: [AppController, ReceiptController],
+
+  providers: [AppService, ReceiptService],
 })
 export class AppModule {}

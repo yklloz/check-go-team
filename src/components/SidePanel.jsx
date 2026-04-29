@@ -1,29 +1,21 @@
 import React, { useState, useRef } from 'react';
 import { X, Camera, Sparkles, ImagePlus, Trash2, Plus } from 'lucide-react';
+// 💡 1. 방금 만든 실제 API 함수 불러옴!
+import { uploadReceipt } from '../receipt/receipt';
 
 export default function SidePanel({ isOpen, onClose, isDarkMode }) {
-  // ==========================================
-  // 1. 상태(State)와 Ref 관리 구역
-  // ==========================================
-
-  // [Ref] 파일 선택 및 카메라 실행을 위한 숨겨진 리모컨임.
   const receiptInputRef = useRef(null); 
   const cameraInputRef = useRef(null); 
-  
-  // [State] AI 스캔(로딩) 상태임.
   const [isScanning, setIsScanning] = useState(false); 
   
-  // [State] 공통 데이터: 영수증 1장당 1개만 존재하는 정보임 (쇼핑몰, 구매 일자)
   const [commonData, setCommonData] = useState({
     shop: '',
     purchasedAt: new Date().toISOString().split('T')[0],
   });
 
-  // [State] 개별 물품 데이터 (배열): 영수증 1장에 여러 물품이 들어갈 수 있으므로 배열([])로 관리함.
-  // 기본적으로 빈 물품 1개를 세팅해 둠.
   const [items, setItems] = useState([
     {
-      id: Date.now(), // 고유 식별자 (삭제/수정 시 필요)
+      id: Date.now(),
       name: '',
       brand: '',
       category: '식료품',
@@ -34,71 +26,59 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
     }
   ]);
 
-  // ==========================================
-  // 2. 로직 함수 구역
-  // ==========================================
-
-  // 버튼 클릭 시 숨겨진 input을 대신 클릭해 줌.
   const handleOcrClick = () => receiptInputRef.current.click();
   const handleCameraClick = () => cameraInputRef.current.click();
 
-  // 사진(영수증)이 업로드되었을 때 실행됨 (가짜 AI OCR 로직)
-  const handleReceiptUpload = (e) => {
+  // 💡 2. 함수 앞에 async를 붙여서 비동기(await) 통신이 가능하게 만듦
+  const handleReceiptUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setIsScanning(true);
 
-    setTimeout(() => {
-      setIsScanning(false); 
-      
-      // 💡 AI가 읽어온 '공통 정보' 덮어쓰기
+    try {
+      // 💡 여기서 진짜 백엔드로 파일을 쏴줌!
+      const result = await uploadReceipt(file);
+      console.log('백엔드에서 받은 실제 데이터:', result);
+
+      // 백엔드에서 준 데이터로 공통 폼 채우기
       setCommonData({
-        shop: '이마트', 
-        purchasedAt: new Date().toISOString().split('T')[0]
+        shop: result.shop || '', 
+        purchasedAt: result.purchasedAt || new Date().toISOString().split('T')[0]
       });
 
-      // 💡 AI가 여러 물건을 읽어왔다고 가정하고 배열로 통째로 덮어씀
-      setItems([
-        {
-          id: Date.now(),
-          name: '3겹 휴지', 
-          brand: '크리넥스',
-          category: '생필품',
-          quantity: '2',
-          unit: '팩',
-          unitPrice: '15000',
-          lineTotal: '30000'
-        },
-        {
-          id: Date.now() + 1, // id가 겹치지 않게 +1 해줌
-          name: '닭가슴살', 
-          brand: 'N사',
-          category: '식료품',
-          quantity: '5',
-          unit: '팩',
-          unitPrice: '2000',
-          lineTotal: '10000'
-        }
-      ]);
+      // 백엔드에서 준 리스트로 개별 물품 폼 채우기
+      if (result.items && result.items.length > 0) {
+        const formattedItems = result.items.map((item, index) => ({
+          id: Date.now() + index,
+          name: item.name || '',
+          brand: item.brand || '',
+          category: item.category || '식료품',
+          quantity: item.quantity?.toString() || '1',
+          unit: item.unit || '개',
+          unitPrice: item.price?.toString() || '',
+          lineTotal: ((item.quantity || 1) * (item.price || 0)).toString()
+        }));
+        setItems(formattedItems);
+      }
 
-      alert('영수증 분석이 완료되어 다수의 물품이 등록됨!');
-    }, 2500); 
+      alert('영수증 분석 완료!');
+    } catch (error) {
+      alert('영수증 분석 중 서버 오류가 발생함.');
+    } finally {
+      setIsScanning(false); 
+    }
   };
 
-  // 공통 데이터(쇼핑몰, 날짜) 수정 시 실행됨
   const handleCommonChange = (field, value) => {
     setCommonData(prev => ({ ...prev, [field]: value }));
   };
 
-  // 개별 물품(배열 안의 객체) 수정 시 실행됨
-  // index: 몇 번째 물품을 수정하는지 알려줌
   const handleItemChange = (index, field, value) => {
     setItems(prevItems => {
-      const newItems = [...prevItems]; // 기존 배열 복사
-      newItems[index] = { ...newItems[index], [field]: value }; // 수정할 항목만 덮어씀
+      const newItems = [...prevItems]; 
+      newItems[index] = { ...newItems[index], [field]: value }; 
       
-      // 수량이나 단가가 바뀌면 해당 물품의 총액(lineTotal) 자동 계산함
       if (field === 'quantity' || field === 'unitPrice') {
         const qty = Number(field === 'quantity' ? value : prevItems[index].quantity) || 0;
         const price = Number(field === 'unitPrice' ? value : prevItems[index].unitPrice) || 0;
@@ -109,7 +89,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
     });
   };
 
-  // 수동으로 새 물품 칸 추가하기
   const addItem = () => {
     setItems(prev => [
       ...prev, 
@@ -117,17 +96,13 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
     ]);
   };
 
-  // 특정 물품 칸 삭제하기 (X 버튼 누를 때)
   const removeItem = (indexToRemove) => {
     setItems(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // 하단에 띄워줄 전체 구매 총액 자동 계산 (모든 물품의 lineTotal 합산)
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
-  // ==========================================
-  // 3. 화면 그리기 (UI 렌더링 구역)
-  // ==========================================
+  // 렌더링 부분은 이전과 완전히 동일함
   return (
     <div className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       
@@ -141,14 +116,11 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
         </button>
       </div>
       
-      {/* 서랍 폭이 넓어짐에 따라 레이아웃 조정, 스크롤 영역 */}
       <div className="p-8 overflow-y-auto h-[calc(100%-100px)] space-y-8 custom-scrollbar">
         
-        {/* 숨겨진 파일 첨부 input */}
         <input type="file" accept="image/*" className="hidden" ref={receiptInputRef} onChange={handleReceiptUpload} />
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleReceiptUpload} />
 
-        {/* 스캔 박스 구역 */}
         <div className={`p-10 border-3 border-dashed rounded-[2rem] flex flex-col items-center justify-center gap-4 transition-all shadow-sm relative overflow-hidden ${isScanning ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' : 'border-gray-100 dark:border-gray-800 hover:border-blue-400 hover:bg-blue-50/20 dark:hover:bg-blue-900/10 group'}`}>
           {isScanning ? (
             <>
@@ -181,7 +153,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
           )}
         </div>
 
-        {/* 1. 영수증 공통 정보 (단 1번만 입력) */}
         <div className="p-6 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-gray-100 dark:border-gray-800 space-y-4">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles size={16} className="text-blue-500" />
@@ -193,7 +164,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
           </div>
         </div>
 
-        {/* 2. 개별 물품 리스트 반복 렌더링 */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="font-black text-sm tracking-tight flex items-center gap-2">
@@ -204,7 +174,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
           {items.map((item, index) => (
             <div key={item.id} className="relative p-6 border-2 border-gray-100 dark:border-gray-800 rounded-3xl space-y-5 bg-white dark:bg-transparent group">
               
-              {/* 우측 상단 삭제 버튼 (물품이 2개 이상일 때만 보임) */}
               {items.length > 1 && (
                 <button 
                   onClick={() => removeItem(index)} 
@@ -249,7 +218,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
             </div>
           ))}
 
-          {/* 물품 추가 버튼 */}
           <button 
             onClick={addItem}
             className="w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold rounded-3xl hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-500 hover:border-blue-200 transition-all flex items-center justify-center gap-2"
@@ -258,7 +226,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
           </button>
         </div>
 
-        {/* 3. 하단 취소 / 완료 버튼 (총 결제액 표시) */}
         <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
           <div className="flex justify-between items-end mb-6 px-2">
             <span className="text-sm font-black text-gray-400">총 영수증 결제액</span>
@@ -269,7 +236,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
             <button onClick={onClose} className="py-4 bg-gray-50 dark:bg-gray-800 text-gray-500 font-black rounded-2xl hover:bg-gray-100 transition-all text-sm uppercase tracking-widest">Cancel</button>
             <button 
               onClick={() => {
-                // 백엔드 전송 시 공통 정보(commonData)와 개별 물품(items)을 합쳐서 보냄
                 const payload = {
                   ...commonData,
                   totalAmount: grandTotal,
@@ -291,9 +257,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
   );
 }
 
-// ==========================================
-// 4. 재사용 가능한 부품(컴포넌트) 구역
-// ==========================================
 function InputGroup({ label, placeholder, type = "text", value, onChange }) {
   return (
     <div className="space-y-2">

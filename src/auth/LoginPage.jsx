@@ -1,6 +1,6 @@
 ﻿import React from 'react';
 import { Mail, Lock } from 'lucide-react'; 
-//import { supabase } from '../supabaseClient'; // (나중에 만들 연결 파일)
+import { supabase } from './supabaseClient'; // (나중에 만들 연결 파일)
 
 /* 
 // 추후 소셜 로그인 기능을 구현할 때 사용할 함수.
@@ -20,6 +20,53 @@ const handleSocialLogin = async (provider) => { // provider는 'google', 'kakao'
 */
 
 const LoginPage = ({ setView }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+// 1. 일반 로그인 함수
+  const handleLogin = async () => {
+    if (!email || !password) {
+      alert("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        alert("로그인 실패: " + error.message);
+      } else {
+        alert("로그인에 성공했습니다!");
+        setView('place-select'); 
+      }
+    } catch (error) {
+      console.error("연동 에러:", error);
+      alert("로그인 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 2. 구글 로그인 함수 (추가된 부분)
+  const handleGoogleLogin = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account',
+          },
+        },
+      });
+
+      if (error) throw error;
+      // 구글 로그인은 성공 시 자동으로 페이지가 리다이렉트됩니다.
+    } catch (error) {
+      console.error("구글 로그인 에러:", error.message);
+      alert("구글 로그인에 실패했습니다. 대시보드 설정을 확인해주세요.");
+    }
+  };
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-900 dark:bg-[#121212] dark:text-white transition-colors duration-300">
       <div className="max-w-md w-full p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">

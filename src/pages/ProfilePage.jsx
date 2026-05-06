@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, use } from 'react';
 import { Camera, ArrowLeft, User, Mail, PenLine } from 'lucide-react';
 
 
@@ -6,14 +6,37 @@ export default function ProfilePage({ setView }) {
   const [profileImage, setProfileImage] = useState(null); 
   const [imageFile, setImageFile] = useState(null); 
   const [nickname, setNickname] = useState(''); 
-  const [fullName, setName] = useState('김첵고'); 
-  const [email, setEmail] = useState('user@chekgo.com'); 
+  const [fullName, setName] = useState(''); 
+  const [email, setEmail] = useState(''); 
 
   // 숨겨진 input 태그를 조종
   const fileInputRef = useRef(null); 
+ 
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch('/api/user/profile', { // 실제 API 엔드포인트로 변경
+        method: 'GET',
+      });
 
+      if (response.ok) {
+        const userData = await response.json();
+        setEmail(userData.email);
+        setName(userData.full_name);
+        setNickname(userData.nickname);
+
+        if (userData.avatar_url) {
+          setProfileImage(userData.avatar_url); // 수퍼베이스 Storage에 저장된 이미지 URL
+        }
+      }
+    } catch (error) {
+      console.error('프로필 정보를 불러오는 중 오류 발생:', error);
+    }
+  };
+    fetchUserProfile();
+  }, []);
   // --- 2. 로직 함수 ---
-
+ 
   // 버튼을 클릭했을 때 실행되는 함수
   const handleProfileClick = () => {
     // 리모컨(fileInputRef)을 통해 숨겨진 input을 클릭.

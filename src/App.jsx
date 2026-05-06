@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { Settings } from 'lucide-react';
 
 import LoginPage from './auth/LoginPage';
@@ -12,6 +12,9 @@ import DashboardPage from './pages/DashboardPage';
 import InventoryListPage from './pages/InventoryListPage';
 import WishlistPage from './pages/WishlistPage';
 import PlaceSelectPage from './pages/PlaceSelectPage';
+import GroceryPage from './pages/GroceryPage';
+import EssentialsPage from './pages/DailySuppliesPage';
+import CosmeticsPage from './pages/CosmeticsPage';
 
 import { PLACES, INITIAL_INVENTORY, INITIAL_WISHLIST } from './data/mockData';
 
@@ -19,15 +22,45 @@ import { PLACES, INITIAL_INVENTORY, INITIAL_WISHLIST } from './data/mockData';
 
 // --- 메인 컴포넌트 ---
 export default function App() {
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [currentCategory, setCurrentCategory] = useState('식료품');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState(() => {
+    const savedCategory = localStorage.getItem('currentCategory');
+    return savedCategory ? savedCategory : 'all';
+  });
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedTheme = localStorage.getItem('isDarkMode');
+    return savedTheme === 'true' ? true : false;
+  });
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [inventory, setInventory] = useState(INITIAL_INVENTORY);
   const [wishlist, setWishlist] = useState(INITIAL_WISHLIST);
   const [searchQuery, setSearchQuery] = useState('');
-  const [view, setView] = useState('login'); // 'login', 'signup', 'place-select', 'dashboard', 'list', 'wishlist', 'profile' 등
+  const [view, setView] = useState(() => {
+    const savedView = localStorage.getItem('currentView');
+    return savedView ? savedView : 'login';
+  });
+  const [selectedPlace, setSelectedPlace] = useState(() => {
+    const savedPlace = localStorage.getItem('selectedPlace');
+    return savedPlace ? JSON.parse(savedPlace) : null;
+  });
 
+  useEffect(() => {
+    localStorage.setItem('currentView', view);
+  }, [view]);
+  
+  useEffect(() => {
+    if (selectedPlace) {
+      localStorage.setItem('selectedPlace', JSON.stringify(selectedPlace));
+    } else {
+      localStorage.removeItem('selectedPlace');
+    }
+  }, [selectedPlace]);
+  useEffect(() => {
+    localStorage.setItem('currentCategory', currentCategory);
+  }, [currentCategory]);
+
+  useEffect(() => {
+    localStorage.setItem('isDarkMode', isDarkMode);
+  }, [isDarkMode]);
 
 //다크모드
   useEffect(() => {
@@ -100,11 +133,15 @@ export default function App() {
   if (view === 'list') {
     return (
       <Layout {...layoutProps}>
-        <InventoryListPage 
-          inventory={inventory} 
-          currentCategory={currentCategory} 
-          setIsSidePanelOpen={setIsSidePanelOpen} 
-        />
+        {currentCategory === '식료품' && (
+          <GroceryPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+        )}
+        {currentCategory === '생필품' && (
+          <EssentialsPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+        )}
+        {currentCategory === '화장품' && (
+          <CosmeticsPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+        )}
       </Layout>
     );
   }
@@ -124,7 +161,7 @@ export default function App() {
 
   if (view === 'profile') {
     return (
-      <Layout>
+      <Layout {...layoutProps }>
         <ProfilePage setView={setView} />
       </Layout>
     );

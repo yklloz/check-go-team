@@ -1,5 +1,6 @@
 import React, { useState, useEffect, use } from 'react';
 import { Settings } from 'lucide-react';
+import { supabase } from './supabaseClient';
 
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
@@ -42,6 +43,7 @@ export default function App() {
     const savedPlace = localStorage.getItem('selectedPlace');
     return savedPlace ? JSON.parse(savedPlace) : null;
   });
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     localStorage.setItem('currentView', view);
@@ -71,6 +73,28 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  useEffect(() => {
+    const checkCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email);
+      }
+    };
+    checkCurrentUser();
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && session.user) {
+        setUserEmail(session.user.email);
+      } else {
+        setUserEmail(""); // 로그아웃 시 바구니 비우기
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+
   // 뷰 전환 함수
   const navigateTo = (newView, category = null) => {
     if (category) setCurrentCategory(category);
@@ -78,12 +102,10 @@ export default function App() {
     setIsSidePanelOpen(false);
   };
 
-
    if (view === 'login') {
      return <LoginPage setView={setView} />;
     }
   
-
   // 회원가입 화면
   if (view === 'signup') {
     return (
@@ -121,18 +143,40 @@ export default function App() {
     setSearchQuery
   };
 
+  const userStatusUI = (
+    <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow text-center">
+      {userEmail ? (
+        <p className="font-bold text-green-600 dark:text-green-400">🟢 현재 접속중: {userEmail}</p>
+      ) : (
+        <p className="font-bold text-red-500">🔴 로그인이 필요합니다.</p>
+      )}
+    </div>
+  );
+
   // 2. Layout(사이드바)이 필요한 화면들
   if (view === 'dashboard') {
     return (
-      <Layout {...layoutProps}>
-        <DashboardPage selectedPlace={selectedPlace} setView={setView} />
-      </Layout>
+      <>
+        <Layout {...layoutProps}>
+          <DashboardPage 
+            inventory={inventory}
+            currentCategory={currentCategory}
+            selectedPlace={selectedPlace} setView={setView} />
+        </Layout>
+
+        <SidePanel
+          isOpen={isSidePanelOpen}
+          onClose={() => setIsSidePanelOpen(false)}
+        />
+      </>
     );
   }
 
   if (view === 'list') {
     return (
+      <>
       <Layout {...layoutProps}>
+        {userStatusUI}
         {currentCategory === '식료품' && (
           <GroceryPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
@@ -143,6 +187,15 @@ export default function App() {
           <CosmeticsPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
       </Layout>
+
+      <SidePanel
+        isOpen={isSidePanelOpen}
+        onClose={() => setIsSidePanelOpen(false)}
+        currentCategory={currentCategory}
+        setInventory={setInventory}
+        inventory={inventory}
+       />
+      </>
     );
   }
 
@@ -180,4 +233,3 @@ export default function App() {
     </Layout>
   );
 }
-

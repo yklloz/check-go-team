@@ -13,7 +13,8 @@ import {
   LogOut,
   Moon,
   Sun,
-  Users
+  Users,
+  CheckSquare
 } from 'lucide-react';
 
 const NavItem = ({ icon, label, active, onClick }) => (
@@ -41,19 +42,26 @@ export default function Layout({
   searchQuery, 
   setSearchQuery, 
   navigateTo, 
-  currentCategory
+  currentCategory,
+  userName,
+  userProfileImage
 }) {
   return (
     <div className="flex h-screen transition-colors duration-200 bg-white text-gray-900 dark:bg-[#121212] dark:text-[#E3E3E3]">
       {/* 사이드바 */}
       <aside className="w-64 border-r border-gray-200 dark:border-[#2F2F2F] flex flex-col p-4 bg-[#FBFBFB] dark:bg-[#181818] transition-colors duration-200">
-        <div className="flex items-center gap-2 px-2 py-4 mb-8 cursor-pointer group" onClick={() => setView('place-select')}>
-          <div className={`w-9 h-9 rounded-lg ${selectedPlace?.color} flex items-center justify-center text-white text-sm font-black shadow-lg group-hover:scale-105 transition-transform`}>
-            {selectedPlace?.name[0]}
-          </div>
-          <div className="flex flex-col">
-            <span className="font-black text-lg tracking-tighter leading-none">{selectedPlace?.name} 첵고</span>
-            {selectedPlace?.isShared && <span className="text-[10px] text-blue-500 font-black tracking-tighter">CO-LIVING SPACE</span>}
+        <div className="px-2 py-4 mb-8 border-b border-gray-100 dark:border-[#2F2F2F] pb-6 cursor-pointer group" onClick={() => setView('place-select')}>
+          <div className="flex flex-col gap-1 pl-2">
+            {/* 1. 현재 선택된 장소 이름 */}
+            <h1 className="text-xl font-black text-gray-800 dark:text-white flex items-center gap-2 group-hover:text-blue-500 transition-colors">
+              <div className={`w-3 h-3 rounded-full ${selectedPlace?.color || 'bg-blue-500'}`}></div>
+              {selectedPlace ? selectedPlace.name : '나의 공간'}
+            </h1>
+            
+            {/* 2. 로그인된 계정 정보 */}
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium pl-5">
+              user@chekgo.com {/*userEmail*/}
+            </p>
           </div>
         </div>
 
@@ -86,15 +94,29 @@ export default function Layout({
       {/* 메인 콘텐츠 영역 */}
       <main className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-[#121212]">
         <header className="h-16 border-b border-gray-100 dark:border-[#2F2F2F] flex items-center justify-between px-10 sticky top-0 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-md z-10">
-          <div className="flex items-center flex-1 max-w-xl">
-            <Search size={18} className="text-gray-300 mr-3" />
-            <input 
-              type="text" 
-              placeholder={`${selectedPlace?.name}에서 필요한 게 있나요?`} 
-              className="bg-transparent border-none focus:outline-none w-full text-sm placeholder:text-gray-400 font-medium"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+  
+          <div className="flex items-center flex-1 max-w-2xl gap-8">
+            {/* 1. 새로 추가된 앱 로고 영역 */}
+            <div className="flex items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => setView('dashboard')}>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-md">
+                C
+              </div>
+              <span className="text-xl font-black tracking-tighter text-gray-900 dark:text-white hidden sm:block">
+                Check-go
+              </span>
+            </div>
+
+            {/* 2. 기존 검색창 영역 */}
+            <div className="flex-1 flex items-center bg-gray-50 dark:bg-[#1C1C1C] rounded-xl px-4 py-2 border border-transparent focus-within:border-blue-500 transition-all">
+              <Search size={18} className="text-gray-400 mr-3 flex-shrink-0" />
+              <input 
+                type="text" 
+                placeholder={`${selectedPlace?.name}에서 어떤 물건을 찾으시나요?`} 
+                className="bg-transparent border-none focus:outline-none w-full text-sm placeholder:text-gray-400 font-medium text-gray-900 dark:text-white"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-5">
             {selectedPlace?.isShared && (

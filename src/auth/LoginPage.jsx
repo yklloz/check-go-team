@@ -1,7 +1,42 @@
-﻿import React from 'react';
-import { Mail, Lock } from 'lucide-react'; // 아이콘 import 필수!
+﻿import React, { useState } from 'react';
+import { Mail, Lock } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 const LoginPage = ({ setView }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = async () => {
+    // 입력 확인
+    if (!email || !password) {
+      alert("이메일과 비밀번호를 모두 입력해주세요!");
+      return;
+    }
+
+    // 수퍼베이스에 로그인 요청
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    });
+
+    if (error) {
+      alert("로그인 실패: " + error.message); 
+    } else {
+      alert("로그인 성공!");
+      setView('place-select'); // 그제서야 다음 화면으로 넘어감
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    
+    if (error) {
+      alert("구글 로그인 에러: " + error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-900 dark:bg-[#121212] dark:text-white transition-colors duration-300">
       <div className="max-w-md w-full p-8 bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-800">
@@ -17,6 +52,8 @@ const LoginPage = ({ setView }) => {
             <input 
               type="text" 
               placeholder="이메일" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" 
             />
           </div>
@@ -25,11 +62,13 @@ const LoginPage = ({ setView }) => {
             <input 
               type="password" 
               placeholder="비밀번호" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full p-3.5 pl-10 rounded-xl border border-gray-200 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm" 
             />
           </div>
           <button 
-            onClick={() => setView('place-select')} 
+            onClick={handleLogin}
             className="w-full py-3.5 bg-black dark:bg-white dark:text-black text-white rounded-xl font-bold hover:opacity-90 transition-opacity mt-2"
           >
             로그인
@@ -47,7 +86,9 @@ const LoginPage = ({ setView }) => {
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <button className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+          <button 
+            onClick={handleGoogleLogin}
+            className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
           </button>
           <button className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 transition-all">

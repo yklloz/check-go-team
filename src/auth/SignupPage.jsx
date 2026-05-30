@@ -15,16 +15,20 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
     }
 
     try {
-      // 가장 기본적인 정보만 보내서 DB 에러 방지
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
+        options: {
+          data: {
+            name: name
+          }
+        }
       });
 
       if (error) {
         alert("회원가입 실패: " + error.message);
       } else {
-        alert("회원가입 성공! 가입하신 메일함에서 인증 링크를 꼭 클릭해주세요.");
+        alert("회원가입 완료. 로그인 화면으로 이동합니다.");
         if (onSignupSuccess) onSignupSuccess();
       }
     } catch (error) {

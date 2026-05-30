@@ -17,15 +17,26 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
     try {
       // 가장 기본적인 정보만 보내서 DB 에러 방지
       const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
+          emailRedirectTo: window.location.origin,
+        },
       });
 
       if (error) {
         alert("회원가입 실패: " + error.message);
       } else {
-        alert("회원가입 성공! 가입하신 메일함에서 인증 링크를 꼭 클릭해주세요.");
-        if (onSignupSuccess) onSignupSuccess();
+        if (data.session) {
+          alert("회원가입과 로그인이 완료되었습니다.");
+          setView('place-select');
+        } else {
+          alert("회원가입 성공! 가입하신 메일함에서 인증 링크를 클릭한 뒤 로그인해주세요.");
+          if (onSignupSuccess) onSignupSuccess();
+        }
       }
     } catch (error) {
       console.error("통신 에러:", error);

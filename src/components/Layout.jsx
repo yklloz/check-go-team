@@ -15,6 +15,7 @@ import {
   Sun,
   Users
 } from 'lucide-react';
+import SidePanel from './SidePanel';
 
 const NavItem = ({ icon, label, active, onClick }) => (
     <button 
@@ -37,11 +38,14 @@ export default function Layout({
   selectedPlace, 
   isDarkMode, 
   setIsDarkMode, 
+  isSidePanelOpen,
   setIsSidePanelOpen, 
   searchQuery, 
   setSearchQuery, 
   navigateTo, 
-  currentCategory
+  currentCategory,
+  onInventoryCreated,
+  onLogout
 }) {
   return (
     <div className="flex h-screen transition-colors duration-200 bg-white text-gray-900 dark:bg-[#121212] dark:text-[#E3E3E3]">
@@ -76,7 +80,7 @@ export default function Layout({
             {isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}
             <span className="font-semibold">{isDarkMode ? '라이트 모드' : '다크 모드'}</span>
           </button>
-          <button onClick={() => setView('login')} className="flex items-center gap-3 w-full p-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
+          <button onClick={onLogout} className="flex items-center gap-3 w-full p-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
             <LogOut size={18}/>
             <span className="font-semibold">로그아웃</span>
           </button>
@@ -120,7 +124,14 @@ export default function Layout({
         </div>
       </main>
 
-      
+      <SidePanel
+        isOpen={isSidePanelOpen}
+        onClose={() => setIsSidePanelOpen(false)}
+        isDarkMode={isDarkMode}
+        selectedPlace={selectedPlace}
+        currentCategory={currentCategory}
+        onInventoryCreated={onInventoryCreated}
+      />
     </div>
   );
 

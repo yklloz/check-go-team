@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { X, Camera, Sparkles, ImagePlus, Trash2, Plus } from 'lucide-react';
 // 💡 1. 방금 만든 실제 API 함수 불러옴!
 import { uploadReceipt } from '../receipt/receipt';
+import { createInventoryItems } from '../services/inventoryService';
 
-export default function SidePanel({ isOpen, onClose, isDarkMode }) {
+export default function SidePanel({ isOpen, onClose, selectedPlace, currentCategory, onInventoryCreated }) {
   const receiptInputRef = useRef(null); 
   const cameraInputRef = useRef(null); 
   const [isScanning, setIsScanning] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [commonData, setCommonData] = useState({
     shop: '',
@@ -25,6 +27,15 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
       lineTotal: ''
     }
   ]);
+
+  useEffect(() => {
+    if (!isOpen || !currentCategory) return;
+
+    setItems(prevItems => prevItems.map(item => ({
+      ...item,
+      category: currentCategory,
+    })));
+  }, [currentCategory, isOpen]);
 
   const handleOcrClick = () => receiptInputRef.current.click();
   const handleCameraClick = () => cameraInputRef.current.click();
@@ -64,6 +75,7 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
 
       alert('영수증 분석 완료!');
     } catch (error) {
+      console.error('영수증 분석 실패:', error);
       alert('영수증 분석 중 서버 오류가 발생함.');
     } finally {
       setIsScanning(false); 
@@ -79,10 +91,31 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
       const newItems = [...prevItems]; 
       newItems[index] = { ...newItems[index], [field]: value }; 
       
-      if (field === 'quantity' || field === 'unitPrice') {
-        const qty = Number(field === 'quantity' ? value : prevItems[index].quantity) || 0;
-        const price = Number(field === 'unitPrice' ? value : prevItems[index].unitPrice) || 0;
-        newItems[index].lineTotal = (qty * price).toString();
+      if (field === 'quantity') {
+        const qty = Number(value) || 0;
+        const unitPrice = Number(newItems[index].unitPrice) || 0;
+        const lineTotal = Number(newItems[index].lineTotal) || 0;
+
+        if (unitPrice > 0) {
+          newItems[index].lineTotal = (qty * unitPrice).toString();
+        } else if (qty > 0 && lineTotal > 0) {
+          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
+        }
+      }
+
+      if (field === 'unitPrice') {
+        const qty = Number(newItems[index].quantity) || 0;
+        const unitPrice = Number(value) || 0;
+        newItems[index].lineTotal = (qty * unitPrice).toString();
+      }
+
+      if (field === 'lineTotal') {
+        const qty = Number(newItems[index].quantity) || 0;
+        const lineTotal = Number(value) || 0;
+
+        if (qty > 0) {
+          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
+        }
       }
       
       return newItems;
@@ -98,6 +131,49 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
 
   const removeItem = (indexToRemove) => {
     setItems(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  const resetForm = () => {
+    setCommonData({
+      shop: '',
+      purchasedAt: new Date().toISOString().split('T')[0],
+    });
+    setItems([
+      {
+        id: Date.now(),
+        name: '',
+        brand: '',
+        category: '식료품',
+        quantity: '',
+        unit: '개',
+        unitPrice: '',
+        lineTotal: ''
+      }
+    ]);
+  };
+
+  const handleRegisterAll = async () => {
+    const hasEmptyName = items.some(item => !item.name.trim());
+
+    if (hasEmptyName) {
+      alert('상품 이름을 입력해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createInventoryItems({ items, commonData, selectedPlace });
+      await onInventoryCreated?.(selectedPlace);
+      alert(`${items.length}개의 물품 등록 완료!`);
+      resetForm();
+      onClose();
+    } catch (error) {
+      console.error('물품 등록 실패:', error);
+      alert(`물품 등록 중 오류가 발생했습니다.\n${error.message || ''}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
@@ -235,19 +311,11 @@ export default function SidePanel({ isOpen, onClose, isDarkMode }) {
           <div className="grid grid-cols-2 gap-4">
             <button onClick={onClose} className="py-4 bg-gray-50 dark:bg-gray-800 text-gray-500 font-black rounded-2xl hover:bg-gray-100 transition-all text-sm uppercase tracking-widest">Cancel</button>
             <button 
-              onClick={() => {
-                const payload = {
-                  ...commonData,
-                  totalAmount: grandTotal,
-                  purchaseOrderItems: items
-                };
-                console.log('백엔드로 전송될 Payload:', payload);
-                alert(`${items.length}개의 물품 등록 완료!`);
-                onClose();
-              }}
-              className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
+              onClick={handleRegisterAll}
+              disabled={isSubmitting}
+              className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
             >
-              Register All
+              {isSubmitting ? 'Registering...' : 'Register All'}
             </button>
           </div>
         </div>

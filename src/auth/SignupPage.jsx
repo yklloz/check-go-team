@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
-import { supabase } from './supabaseClient'; 
+import { supabase } from '../supabaseClient'; 
 
 const SignupPage = ({ setView, onSignupSuccess }) => {
   const [name, setName] = useState('');
@@ -16,20 +16,26 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
+        email,
+        password,
         options: {
           data: {
-            name: name
-          }
-        }
+            full_name: name,
+          },
+          emailRedirectTo: window.location.origin,
+        },
       });
 
       if (error) {
         alert("회원가입 실패: " + error.message);
       } else {
-        alert("회원가입 완료. 로그인 화면으로 이동합니다.");
-        if (onSignupSuccess) onSignupSuccess();
+        if (data.session) {
+          alert("회원가입과 로그인이 완료되었습니다.");
+          setView('place-select');
+        } else {
+          alert("회원가입 성공! 가입하신 메일함에서 인증 링크를 클릭한 뒤 로그인해주세요.");
+          if (onSignupSuccess) onSignupSuccess();
+        }
       }
     } catch (error) {
       console.error("통신 에러:", error);

@@ -1,23 +1,22 @@
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
+
 import { supabase } from './supabaseClient';
+import SidePanel from './components/RegistrationPanel';
 
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import ProfilePage from './pages/ProfilePage';
-import SidePanel from './components/SidePanel';
 import Layout from './components/Layout';
-import StatCard from './components/StatCard';
-import InventoryTable from './components/InventoryTable';
 import DashboardPage from './pages/DashboardPage';
-import InventoryListPage from './pages/InventoryListPage';
 import WishlistPage from './pages/WishlistPage';
 import PlaceSelectPage from './pages/PlaceSelectPage';
 import GroceryPage from './pages/GroceryPage';
 import EssentialsPage from './pages/DailySuppliesPage';
 import CosmeticsPage from './pages/CosmeticsPage';
+import { fetchInventory } from './services/inventoryService';
 
-import { PLACES, INITIAL_INVENTORY, INITIAL_WISHLIST } from './data/mockData';
+import { PLACES, INITIAL_WISHLIST } from './data/mockData';
 
 
 
@@ -32,8 +31,9 @@ export default function App() {
     return savedTheme === 'true' ? true : false;
   });
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
-  const [inventory, setInventory] = useState(INITIAL_INVENTORY);
-  const [wishlist, setWishlist] = useState(INITIAL_WISHLIST);
+  const [inventory, setInventory] = useState([]);
+  const [inventoryError, setInventoryError] = useState('');
+  const [wishlist] = useState(INITIAL_WISHLIST);
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState(() => {
     const savedView = localStorage.getItem('currentView');
@@ -63,6 +63,54 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('isDarkMode', isDarkMode);
   }, [isDarkMode]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && view === 'login') {
+        setView(selectedPlace ? 'dashboard' : 'place-select');
+      } else if (!data.session && view !== 'login' && view !== 'signup') {
+        setView('login');
+      }
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session && view === 'login') {
+        setView(selectedPlace ? 'dashboard' : 'place-select');
+      } else if (!session && view !== 'login' && view !== 'signup') {
+        setView('login');
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [selectedPlace, view]);
+
+  const loadInventory = async (place = selectedPlace) => {
+    try {
+      setInventoryError('');
+      const data = place ? await fetchInventory(place) : [];
+      setInventory(data);
+    } catch (error) {
+      console.error('재고 불러오기 실패:', error);
+      setInventoryError('재고 데이터를 불러오지 못했습니다.');
+    }
+  };
+
+  useEffect(() => {
+    const place = selectedPlace;
+
+    Promise.resolve().then(async () => {
+      try {
+        setInventoryError('');
+        const data = place ? await fetchInventory(place) : [];
+        setInventory(data);
+      } catch (error) {
+        console.error('재고 불러오기 실패:', error);
+        setInventoryError('재고 데이터를 불러오지 못했습니다.');
+      }
+    });
+  }, [selectedPlace]);
 
 //다크모드
   useEffect(() => {
@@ -102,6 +150,24 @@ export default function App() {
     setIsSidePanelOpen(false);
   };
 
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      alert(`로그아웃 실패: ${error.message}`);
+      return;
+    }
+
+    setSelectedPlace(null);
+    setInventory([]);
+    setInventoryError('');
+    setIsSidePanelOpen(false);
+    localStorage.removeItem('selectedPlace');
+    localStorage.setItem('currentView', 'login');
+    setView('login');
+  };
+
+
    if (view === 'login') {
      return <LoginPage setView={setView} />;
     }
@@ -140,7 +206,10 @@ export default function App() {
     isSidePanelOpen,
     setIsSidePanelOpen,
     searchQuery,
-    setSearchQuery
+    setSearchQuery,
+    currentCategory,
+    onInventoryCreated: loadInventory,
+    onLogout: handleLogout
   };
 
   const userStatusUI = (
@@ -178,13 +247,13 @@ export default function App() {
       <Layout {...layoutProps}>
         {userStatusUI}
         {currentCategory === '식료품' && (
-          <GroceryPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <GroceryPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
         {currentCategory === '생필품' && (
-          <EssentialsPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <EssentialsPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
         {currentCategory === '화장품' && (
-          <CosmeticsPage inventory={inventory} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <CosmeticsPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
       </Layout>
 

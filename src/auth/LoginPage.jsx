@@ -1,39 +1,50 @@
 ﻿import React, { useState } from 'react';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react'; // 아이콘 import 필수!
 import { supabase } from '../supabaseClient';
 
 const LoginPage = ({ setView }) => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
-    // 입력 확인
     if (!email || !password) {
-      alert("이메일과 비밀번호를 모두 입력해주세요!");
+      alert('이메일과 비밀번호를 입력해주세요.');
       return;
     }
 
-    // 수퍼베이스에 로그인 요청
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
+    setIsSubmitting(true);
 
-    if (error) {
-      alert("로그인 실패: " + error.message); 
-    } else {
-      alert("로그인 성공!");
-      setView('place-select'); // 그제서야 다음 화면으로 넘어감
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert(`로그인 실패: ${error.message}`);
+        return;
+      }
+
+      setView('place-select');
+    } catch (error) {
+      console.error('로그인 오류:', error);
+      alert('로그인 중 오류가 발생했습니다.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
+  const handleOAuthLogin = async (provider) => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin,
+      },
     });
-    
+
     if (error) {
-      alert("구글 로그인 에러: " + error.message);
+      alert(`${provider} 로그인 실패: ${error.message}`);
     }
   };
 
@@ -69,9 +80,10 @@ const LoginPage = ({ setView }) => {
           </div>
           <button 
             onClick={handleLogin}
-            className="w-full py-3.5 bg-black dark:bg-white dark:text-black text-white rounded-xl font-bold hover:opacity-90 transition-opacity mt-2"
+            disabled={isSubmitting}
+            className="w-full py-3.5 bg-black dark:bg-white dark:text-black text-white rounded-xl font-bold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity mt-2"
           >
-            로그인
+            {isSubmitting ? '로그인 중...' : '로그인'}
           </button>
         </div>
 
@@ -86,15 +98,13 @@ const LoginPage = ({ setView }) => {
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <button 
-            onClick={handleGoogleLogin}
-            className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+          <button onClick={() => handleOAuthLogin('google')} className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
           </button>
-          <button className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 transition-all">
+          <button onClick={() => handleOAuthLogin('kakao')} className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 transition-all">
             <span className="text-[#3C1E1E] font-bold text-xs tracking-tighter">TALK</span>
           </button>
-          <button className="flex justify-center items-center py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 transition-all">
+          <button onClick={() => handleOAuthLogin('apple')} className="flex justify-center items-center py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 transition-all">
             <span className="font-bold text-sm"></span>
           </button>
         </div>

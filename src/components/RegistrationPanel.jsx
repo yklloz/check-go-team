@@ -1,16 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Sparkles, ImagePlus, Trash2, Plus } from 'lucide-react';
 import { uploadReceipt } from '../receipt/receipt';
-import { supabase } from '../supabaseClient';
+import { createInventoryItems } from '../services/inventoryService';
 
-export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, inventory }) {
+export default function RegistrationPanel({ 
+  isOpen, 
+  onClose, 
+  isDarkMode, 
+  setInventory, 
+  inventory,
+  selectedPlace, 
+  currentCategory, 
+  onInventoryCreated 
+}) {
   const receiptInputRef = useRef(null); 
   const cameraInputRef = useRef(null); 
+  
   const [isScanning, setIsScanning] = useState(false); 
-  const [userEmail, setUserEmail] = useState("");
-  const [userName, setUserName] = useState("사용자");
-  const [avatarUrl, setAvatarUrl] = useState(null);
-
+  const [isSubmitting, setIsSubmitting] = useState(false); 
+  
   const [commonData, setCommonData] = useState({
     shop: '',
     purchasedAt: new Date().toISOString().split('T')[0],
@@ -29,6 +37,15 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
     }
   ]);
 
+  useEffect(() => {
+    if (!isOpen || !currentCategory) return;
+
+    setItems(prevItems => prevItems.map(item => ({
+      ...item,
+      category: currentCategory,
+    })));
+  }, [currentCategory, isOpen]);
+
   const handleOcrClick = () => receiptInputRef.current.click();
   const handleCameraClick = () => cameraInputRef.current.click();
 
@@ -40,8 +57,7 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
 
     try {
       const result = await uploadReceipt(file);
-      console.log('백엔드에서 받은 실제 데이터:', result);
-
+      
       setCommonData({
         shop: result.shop || '', 
         purchasedAt: result.purchasedAt || new Date().toISOString().split('T')[0]
@@ -63,6 +79,7 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
 
       alert('영수증 분석 완료!');
     } catch (error) {
+      console.error('영수증 분석 실패:', error);
       alert('영수증 분석 중 서버 오류가 발생함.');
     } finally {
       setIsScanning(false); 
@@ -78,10 +95,31 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
       const newItems = [...prevItems]; 
       newItems[index] = { ...newItems[index], [field]: value }; 
       
-      if (field === 'quantity' || field === 'unitPrice') {
-        const qty = Number(field === 'quantity' ? value : prevItems[index].quantity) || 0;
-        const price = Number(field === 'unitPrice' ? value : prevItems[index].unitPrice) || 0;
-        newItems[index].lineTotal = (qty * price).toString();
+      if (field === 'quantity') {
+        const qty = Number(value) || 0;
+        const unitPrice = Number(newItems[index].unitPrice) || 0;
+        const lineTotal = Number(newItems[index].lineTotal) || 0;
+
+        if (unitPrice > 0) {
+          newItems[index].lineTotal = (qty * unitPrice).toString();
+        } else if (qty > 0 && lineTotal > 0) {
+          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
+        }
+      }
+
+      if (field === 'unitPrice') {
+        const qty = Number(newItems[index].quantity) || 0;
+        const unitPrice = Number(value) || 0;
+        newItems[index].lineTotal = (qty * unitPrice).toString();
+      }
+
+      if (field === 'lineTotal') {
+        const qty = Number(newItems[index].quantity) || 0;
+        const lineTotal = Number(value) || 0;
+
+        if (qty > 0) {
+          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
+        }
       }
       
       return newItems;
@@ -99,75 +137,47 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
     setItems(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
+  const resetForm = () => {
+    setCommonData({
+      shop: '',
+      purchasedAt: new Date().toISOString().split('T')[0],
+    });
+    setItems([
+      { id: Date.now(), name: '', brand: '', category: '식료품', quantity: '', unit: '개', unitPrice: '', lineTotal: '' }
+    ]);
+  };
 
+  // 백엔드 담당자분의 훌륭한 저장 함수!
   const handleRegisterAll = async () => {
+    const hasEmptyName = items.some(item => !item.name.trim());
+
+    if (hasEmptyName) {
+      alert('상품 이름을 입력해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
-      const insertData = items.map(item => ({
-        name: item.name,
-        brand: item.brand,
-        category: item.category,
-        quantity: Number(item.quantity) || 1,
-        unit: item.unit,
-        price: Number(item.unitPrice) || 0,
-        shop: commonData.shop,
-        purchased_at: commonData.purchasedAt,
-      }));
-
-      const { data, error } = await supabase
-        .from('inventories')
-        .insert(insertData)
-        .select();
-
-      if (error) throw error;
-    
-      const newItemsForScreen = items.map((item, index) => ({
-        id: Date.now() + index, 
-        name: item.name,
-        category: item.category,
-        quantity: item.quantity,
-        shop: commonData.shop
-      }));
-
-      setInventory(prev => [...prev, ...newItemsForScreen]);
-
+      await createInventoryItems({ items, commonData, selectedPlace });
+      await onInventoryCreated?.(selectedPlace);
       alert(`${items.length}개의 물품 등록 완료!`);
+      resetForm();
       onClose();
-
     } catch (error) {
-      console.error('등록 에러:', error);
-      alert('데이터 저장 중 오류가 발생했습니다.');
+      console.error('물품 등록 실패:', error);
+      alert(`물품 등록 중 오류가 발생했습니다.\n${error.message || ''}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        setUserEmail(user.email);
-        const savedName = user.user_metadata?.name || user.user_metadata?.full_name;
-        
-        const savedAvatar = user.user_metadata?.avatar_url; 
-        if (savedAvatar) setAvatarUrl(savedAvatar);
-
-        if (savedName) {
-          setUserName(savedName);
-        } else {
-          setUserName(user.email.split('@')[0]);
-        }
-      }
-    };
-    
-    if (isOpen) {
-      fetchUser();
-    }
-  }, [isOpen]);
+  const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
   return (
     <div className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       
-      <div className="flex items-center justify-between p-8 pb-4">
+      <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F]">
         <div>
           <h2 className="text-2xl font-black tracking-tight">품목 스마트 등록</h2>
           <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-widest">New Inventory Entry</p>
@@ -177,28 +187,7 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
         </button>
       </div>
       
-      <div className="px-8 pb-6 border-b border-gray-50 dark:border-[#2F2F2F] flex items-center gap-4">
-        {avatarUrl ? (
-          <img 
-            src={avatarUrl} 
-            alt="profile"
-            className="w-12 h-12 rounded-full object-cover shadow-sm border border-gray-100 dark:border-gray-700"
-          />
-        ) : (
-
-        <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center font-black text-xl shadow-sm">
-          {userName.charAt(0).toUpperCase()}
-        </div>
-        )}
-        <div className="flex flex-col">
-          <span className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">
-            {userName}
-          </span>
-          <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-            {userEmail}
-          </span>
-        </div>
-      </div>
+      {/* 프로필 표시 영역 싹 지움! 아주 깔끔해졌습니다! */}
 
       <div className="p-8 overflow-y-auto h-[calc(100%-180px)] space-y-8 custom-scrollbar">
         
@@ -311,7 +300,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
           </button>
         </div>
 
-        {/* 👇 날아갔던 하단 영역(버튼 등) 복구 👇 */}
         <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
           <div className="flex justify-between items-end mb-6 px-2">
             <span className="text-sm font-black text-gray-400">총 영수증 결제액</span>
@@ -322,9 +310,10 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
             <button onClick={onClose} className="py-4 bg-gray-50 dark:bg-gray-800 text-gray-500 font-black rounded-2xl hover:bg-gray-100 transition-all text-sm uppercase tracking-widest">Cancel</button>
             <button 
               onClick={handleRegisterAll}
-              className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
+              disabled={isSubmitting}
+              className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
             >
-              Register All
+              {isSubmitting ? 'Registering...' : 'Register All'}
             </button>
           </div>
         </div>
@@ -334,7 +323,6 @@ export default function SidePanel({ isOpen, onClose, isDarkMode, setInventory, i
   );
 }
 
-// 👇 날아갔던 InputGroup 헬퍼 함수 복구 👇
 function InputGroup({ label, placeholder, type = "text", value, onChange }) {
   return (
     <div className="space-y-2">

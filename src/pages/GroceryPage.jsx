@@ -2,7 +2,7 @@ import React from 'react';
 import { Apple, Package } from 'lucide-react';
 import InventoryTable from '../components/InventoryTable';
 
-export default function GroceryPage({ inventory, setIsSidePanelOpen }) {
+export default function GroceryPage({ inventory, inventoryError, setIsSidePanelOpen }) {
   const filteredData = inventory.filter(item => item.category === '식료품');
 
   return (
@@ -13,6 +13,11 @@ export default function GroceryPage({ inventory, setIsSidePanelOpen }) {
           식료품 리스트
         </h1>
       </div>
+      {inventoryError && (
+        <div className="p-4 rounded-2xl bg-red-50 text-red-600 text-sm font-bold border border-red-100">
+          {inventoryError}
+        </div>
+      )}
       <div className="border border-gray-100 dark:border-[#2F2F2F] rounded-3xl bg-white dark:bg-transparent overflow-hidden shadow-xl shadow-gray-100/50 dark:shadow-none">
         <InventoryTable data={filteredData} />
         {filteredData.length === 0 && (

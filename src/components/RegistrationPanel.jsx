@@ -1,14 +1,23 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Sparkles, ImagePlus, Trash2, Plus } from 'lucide-react';
-// 💡 1. 방금 만든 실제 API 함수 불러옴!
 import { uploadReceipt } from '../receipt/receipt';
 import { createInventoryItems } from '../services/inventoryService';
 
-export default function SidePanel({ isOpen, onClose, selectedPlace, currentCategory, onInventoryCreated }) {
+export default function RegistrationPanel({ 
+  isOpen, 
+  onClose, 
+  isDarkMode, 
+  setInventory, 
+  inventory,
+  selectedPlace, 
+  currentCategory, 
+  onInventoryCreated 
+}) {
   const receiptInputRef = useRef(null); 
   const cameraInputRef = useRef(null); 
+  
   const [isScanning, setIsScanning] = useState(false); 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); 
   
   const [commonData, setCommonData] = useState({
     shop: '',
@@ -40,7 +49,6 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
   const handleOcrClick = () => receiptInputRef.current.click();
   const handleCameraClick = () => cameraInputRef.current.click();
 
-  // 💡 2. 함수 앞에 async를 붙여서 비동기(await) 통신이 가능하게 만듦
   const handleReceiptUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -48,17 +56,13 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
     setIsScanning(true);
 
     try {
-      // 💡 여기서 진짜 백엔드로 파일을 쏴줌!
       const result = await uploadReceipt(file);
-      console.log('백엔드에서 받은 실제 데이터:', result);
-
-      // 백엔드에서 준 데이터로 공통 폼 채우기
+      
       setCommonData({
         shop: result.shop || '', 
         purchasedAt: result.purchasedAt || new Date().toISOString().split('T')[0]
       });
 
-      // 백엔드에서 준 리스트로 개별 물품 폼 채우기
       if (result.items && result.items.length > 0) {
         const formattedItems = result.items.map((item, index) => ({
           id: Date.now() + index,
@@ -133,19 +137,11 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
       purchasedAt: new Date().toISOString().split('T')[0],
     });
     setItems([
-      {
-        id: Date.now(),
-        name: '',
-        brand: '',
-        category: '식료품',
-        quantity: '',
-        unit: '개',
-        unitPrice: '',
-        lineTotal: ''
-      }
+      { id: Date.now(), name: '', brand: '', category: '식료품', quantity: '', unit: '개', unitPrice: '', lineTotal: '' }
     ]);
   };
 
+  // 백엔드 담당자분의 훌륭한 저장 함수!
   const handleRegisterAll = async () => {
     const hasEmptyName = items.some(item => !item.name.trim());
 
@@ -172,11 +168,10 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
 
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
-  // 렌더링 부분은 이전과 완전히 동일함
   return (
     <div className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       
-      <div className="flex items-center justify-between p-8 border-b border-gray-50 dark:border-[#2F2F2F]">
+      <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F]">
         <div>
           <h2 className="text-2xl font-black tracking-tight">품목 스마트 등록</h2>
           <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-widest">New Inventory Entry</p>
@@ -186,7 +181,9 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
         </button>
       </div>
       
-      <div className="p-8 overflow-y-auto h-[calc(100%-100px)] space-y-8 custom-scrollbar">
+      {/* 프로필 표시 영역 싹 지움! 아주 깔끔해졌습니다! */}
+
+      <div className="p-8 overflow-y-auto h-[calc(100%-180px)] space-y-8 custom-scrollbar">
         
         <input type="file" accept="image/*" className="hidden" ref={receiptInputRef} onChange={handleReceiptUpload} />
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleReceiptUpload} />
@@ -292,7 +289,8 @@ export default function SidePanel({ isOpen, onClose, selectedPlace, currentCateg
             onClick={addItem}
             className="w-full py-4 border-2 border-dashed border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold rounded-3xl hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-500 hover:border-blue-200 transition-all flex items-center justify-center gap-2"
           >
-            <Plus size={18} /> 품목 수동 추가
+            <Plus size={18} />
+            <span>품목 수동 추가</span>
           </button>
         </div>
 
@@ -326,7 +324,7 @@ function InputGroup({ label, placeholder, type = "text", value, onChange }) {
       <input 
         type={type} 
         placeholder={placeholder} 
-        value={value}         
+        value={value}        
         onChange={onChange}   
         className="w-full p-3.5 text-sm rounded-xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-gray-300 dark:placeholder:text-gray-600 font-bold shadow-inner" 
       />

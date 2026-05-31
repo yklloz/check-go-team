@@ -1,6 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { Mail, Lock } from 'lucide-react'; // 아이콘 import 필수!
-import { supabase } from './supabaseClient';
+import { supabase } from '../supabaseClient';
 
 const LoginPage = ({ setView }) => {
   const [email, setEmail] = useState('');

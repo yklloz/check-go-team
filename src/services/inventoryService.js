@@ -1,4 +1,4 @@
-import { supabase } from '../auth/supabaseClient';
+import { supabase } from '../supabaseClient';
 
 const CATEGORY_NAME_MAP = {
   '식료품': '식품',

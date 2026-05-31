@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
-import { supabase } from './supabaseClient'; 
+import { supabase } from '../supabaseClient'; 
 
 const SignupPage = ({ setView, onSignupSuccess }) => {
   const [name, setName] = useState('');
@@ -15,7 +15,6 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
     }
 
     try {
-      // 가장 기본적인 정보만 보내서 DB 에러 방지
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

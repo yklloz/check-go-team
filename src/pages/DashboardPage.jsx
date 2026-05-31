@@ -7,8 +7,8 @@ export default function DashboardPage({ selectedPlace }) {
     <div className="space-y-10">
       <div className="flex justify-between items-end">
         <div className="space-y-1">
-          <p className="text-xs text-blue-500 font-black uppercase tracking-widest">Overview</p>
-          <h1 className="text-4xl font-black tracking-tight">반가워요, {selectedPlace?.name} 관리자님! 👋</h1>
+          <p className="text-xs text-blue-500 font-black uppercase tracking-widest">Home</p>
+          <h1 className="text-4xl font-black tracking-tight">{selectedPlace?.name}에 어떤 게 필요하신가요?</h1>
         </div>
         {selectedPlace?.isShared && (
           <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all">

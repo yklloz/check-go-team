@@ -80,6 +80,8 @@ export default function App() {
       }
     });
 
+  
+
     return () => {
       authListener.subscription.unsubscribe();
     };
@@ -97,6 +99,31 @@ export default function App() {
   };
 
   useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        // inventories 테이블에 있는 모든 데이터 가져오기
+        const { data, error } = await supabase
+          .from('inventories')
+          .select('*');
+
+        if (error) {
+          console.error('데이터 불러오기 에러:', error.message);
+          return;
+        }
+
+        // 통신에 성공해서 데이터를 받았다면 State 업데이트
+        if (data) {
+          setInventory(data);
+        }
+      } catch (error) {
+        console.error('수퍼베이스 서버 통신 중 오류 발생:', error);
+      }
+    };
+  
+    fetchInventory(); 
+  }, []); // 빈 배열을 넣어서 컴포넌트가 처음 화면에 렌더링될 때 딱 한 번만 실행되게 만듦
+
+  useEffect(() => {
     const place = selectedPlace;
 
     Promise.resolve().then(async () => {
@@ -111,7 +138,7 @@ export default function App() {
     });
   }, [selectedPlace]);
 
-//다크모드
+ //다크모드
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -210,7 +237,7 @@ export default function App() {
     onInventoryCreated: loadInventory,
     onLogout: handleLogout
   };
-
+  
   const userStatusUI = (
     <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow text-center">
       {userEmail ? (
@@ -220,7 +247,7 @@ export default function App() {
       )}
     </div>
   );
-
+  
   // 2. Layout(사이드바)이 필요한 화면들
   if (view === 'dashboard') {
     return (

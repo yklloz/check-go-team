@@ -6,9 +6,6 @@ import { createInventoryItems } from '../services/inventoryService';
 export default function RegistrationPanel({ 
   isOpen, 
   onClose, 
-  isDarkMode, 
-  setInventory, 
-  inventory,
   selectedPlace, 
   currentCategory, 
   onInventoryCreated 
@@ -93,34 +90,28 @@ export default function RegistrationPanel({
   const handleItemChange = (index, field, value) => {
     setItems(prevItems => {
       const newItems = [...prevItems]; 
-      newItems[index] = { ...newItems[index], [field]: value }; 
+      const currentItem = { ...newItems[index], [field]: value };
+      const qty = Number(currentItem.quantity) || 0;
+      const unitPrice = Number(currentItem.unitPrice) || 0;
+      const lineTotal = Number(currentItem.lineTotal) || 0;
       
-      if (field === 'quantity') {
-        const qty = Number(value) || 0;
-        const unitPrice = Number(newItems[index].unitPrice) || 0;
-        const lineTotal = Number(newItems[index].lineTotal) || 0;
+      if (field === 'lineTotal' && qty > 0) {
+        currentItem.unitPrice = Math.round(lineTotal / qty).toString();
+      }
 
-        if (unitPrice > 0) {
-          newItems[index].lineTotal = (qty * unitPrice).toString();
-        } else if (qty > 0 && lineTotal > 0) {
-          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
+      if (field === 'unitPrice' && qty > 0) {
+        currentItem.lineTotal = (qty * unitPrice).toString();
+      }
+
+      if (field === 'quantity' && qty > 0) {
+        if (lineTotal > 0) {
+          currentItem.unitPrice = Math.round(lineTotal / qty).toString();
+        } else if (unitPrice > 0) {
+          currentItem.lineTotal = (qty * unitPrice).toString();
         }
       }
 
-      if (field === 'unitPrice') {
-        const qty = Number(newItems[index].quantity) || 0;
-        const unitPrice = Number(value) || 0;
-        newItems[index].lineTotal = (qty * unitPrice).toString();
-      }
-
-      if (field === 'lineTotal') {
-        const qty = Number(newItems[index].quantity) || 0;
-        const lineTotal = Number(value) || 0;
-
-        if (qty > 0) {
-          newItems[index].unitPrice = Math.round(lineTotal / qty).toString();
-        }
-      }
+      newItems[index] = currentItem;
       
       return newItems;
     });

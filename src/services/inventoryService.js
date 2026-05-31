@@ -36,22 +36,31 @@ const getPlace = async ({ userId, selectedPlace, placeId }) => {
 
   if (!selectedPlace?.id && !selectedPlace?.name) return null;
 
-  let query = supabase
-    .from('places')
-    .select('id, name, place_type')
-    .eq('user_id', userId);
-
   if (selectedPlace?.id) {
-    query = query.eq('place_type', selectedPlace.id);
-  } else {
-    query = query.eq('name', selectedPlace.name);
+    const { data, error } = await supabase
+      .from('places')
+      .select('id, name, place_type')
+      .eq('user_id', userId)
+      .eq('place_type', selectedPlace.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data) return data;
   }
 
-  const { data, error } = await query.maybeSingle();
+  if (selectedPlace?.name) {
+    const { data, error } = await supabase
+      .from('places')
+      .select('id, name, place_type')
+      .eq('user_id', userId)
+      .eq('name', selectedPlace.name)
+      .maybeSingle();
 
-  if (error) throw error;
+    if (error) throw error;
+    if (data) return data;
+  }
 
-  if (data || !selectedPlace) return data;
+  if (!selectedPlace) return null;
 
   const { data: createdPlace, error: createError } = await supabase
     .from('places')
@@ -62,6 +71,18 @@ const getPlace = async ({ userId, selectedPlace, placeId }) => {
     })
     .select('id, name, place_type')
     .single();
+
+  if (createError?.code === '23505') {
+    const { data, error } = await supabase
+      .from('places')
+      .select('id, name, place_type')
+      .eq('user_id', userId)
+      .eq('name', selectedPlace.name)
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
 
   if (createError) throw createError;
   return createdPlace;

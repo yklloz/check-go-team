@@ -236,7 +236,6 @@ export default function App() {
   if (view === 'list') {
     return (
       <Layout {...layoutProps}>
-        {userStatusUI}
         {currentCategory === '식료품' && (
           <GroceryPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}

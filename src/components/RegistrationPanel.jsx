@@ -6,9 +6,6 @@ import { createInventoryItems } from '../services/inventoryService';
 export default function RegistrationPanel({ 
   isOpen, 
   onClose, 
-  isDarkMode, 
-  setInventory, 
-  inventory,
   selectedPlace, 
   currentCategory, 
   onInventoryCreated 

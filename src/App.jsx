@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 
 import { supabase } from './supabaseClient';
-import SidePanel from './components/RegistrationPanel';
 
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
@@ -225,25 +224,17 @@ export default function App() {
   // 2. Layout(사이드바)이 필요한 화면들
   if (view === 'dashboard') {
     return (
-      <>
-        <Layout {...layoutProps}>
-          <DashboardPage 
-            inventory={inventory}
-            currentCategory={currentCategory}
-            selectedPlace={selectedPlace} setView={setView} />
-        </Layout>
-
-        <SidePanel
-          isOpen={isSidePanelOpen}
-          onClose={() => setIsSidePanelOpen(false)}
-        />
-      </>
+      <Layout {...layoutProps}>
+        <DashboardPage 
+          inventory={inventory}
+          currentCategory={currentCategory}
+          selectedPlace={selectedPlace} setView={setView} />
+      </Layout>
     );
   }
 
   if (view === 'list') {
     return (
-      <>
       <Layout {...layoutProps}>
         {userStatusUI}
         {currentCategory === '식료품' && (
@@ -256,15 +247,6 @@ export default function App() {
           <CosmeticsPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
         )}
       </Layout>
-
-      <SidePanel
-        isOpen={isSidePanelOpen}
-        onClose={() => setIsSidePanelOpen(false)}
-        currentCategory={currentCategory}
-        setInventory={setInventory}
-        inventory={inventory}
-       />
-      </>
     );
   }
 

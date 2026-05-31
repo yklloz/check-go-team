@@ -186,7 +186,6 @@ export default function Layout({
       <RegistrationPanel
         isOpen={isSidePanelOpen}
         onClose={() => setIsSidePanelOpen(false)}
-        isDarkMode={isDarkMode}
         selectedPlace={selectedPlace}
         currentCategory={currentCategory}
         onInventoryCreated={onInventoryCreated}

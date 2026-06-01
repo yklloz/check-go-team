@@ -94,7 +94,7 @@ export default function App() {
       setInventory(data);
     } catch (error) {
       console.error('재고 불러오기 실패:', error);
-      setInventoryError('재고 데이터를 불러오지 못했습니다.');
+      setInventoryError(`재고 데이터를 불러오지 못했습니다. ${error.message || ''}`);
     }
   };
 
@@ -133,7 +133,7 @@ export default function App() {
         setInventory(data);
       } catch (error) {
         console.error('재고 불러오기 실패:', error);
-        setInventoryError('재고 데이터를 불러오지 못했습니다.');
+        setInventoryError(`재고 데이터를 불러오지 못했습니다. ${error.message || ''}`);
       }
     });
   }, [selectedPlace]);

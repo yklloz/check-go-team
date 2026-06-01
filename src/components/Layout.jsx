@@ -48,6 +48,7 @@ export default function Layout({
   navigateTo, 
   currentCategory,
   onInventoryCreated,
+  onWishlistCreated,
   onLogout
 }) {
 
@@ -188,7 +189,9 @@ export default function Layout({
         onClose={() => setIsSidePanelOpen(false)}
         selectedPlace={selectedPlace}
         currentCategory={currentCategory}
+        mode={view === 'wishlist' ? 'wishlist' : 'inventory'}
         onInventoryCreated={onInventoryCreated}
+        onWishlistCreated={onWishlistCreated}
       />
     </div>
   );

@@ -2,7 +2,14 @@ import React from 'react';
 import { Sparkles, Package } from 'lucide-react';
 import InventoryTable from '../components/InventoryTable';
 
-export default function CosmeticsPage({ inventory, inventoryError, setIsSidePanelOpen }) {
+export default function CosmeticsPage({
+  inventory,
+  inventoryError,
+  setIsSidePanelOpen,
+  onAddWishlist,
+  onUpdateItem,
+  onConsumeItem,
+}) {
   const filteredData = inventory.filter(item => item.category === '화장품');
 
   return (
@@ -19,7 +26,12 @@ export default function CosmeticsPage({ inventory, inventoryError, setIsSidePane
         </div>
       )}
       <div className="border border-gray-100 dark:border-[#2F2F2F] rounded-3xl bg-white dark:bg-transparent overflow-hidden shadow-xl shadow-gray-100/50 dark:shadow-none">
-        <InventoryTable data={filteredData} />
+        <InventoryTable
+          data={filteredData}
+          onAddWishlist={onAddWishlist}
+          onUpdateItem={onUpdateItem}
+          onConsumeItem={onConsumeItem}
+        />
         {filteredData.length === 0 && (
           <div className="p-32 text-center">
             <Package size={64} className="mx-auto text-gray-100 dark:text-gray-800 mb-6" />

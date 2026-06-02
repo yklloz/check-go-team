@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, ArrowLeft, User, Mail, PenLine } from 'lucide-react';
 
+// 🚨 중요: supabaseClient 파일 경로가 맞는지 꼭 확인해줘! (예: '../supabaseClient' 또는 './supabaseClient')
+import { supabase } from '../supabaseClient'; 
 
 export default function ProfilePage({ setView }) {
   const [profileImage, setProfileImage] = useState(null); 
@@ -8,68 +10,111 @@ export default function ProfilePage({ setView }) {
   const [nickname, setNickname] = useState(''); 
   const [fullName, setName] = useState(''); 
   const [email, setEmail] = useState(''); 
+  const [isLoading, setIsLoading] = useState(false); // 저장 중 버튼 잠금을 위한 상태
 
   // 숨겨진 input 태그를 조종
   const fileInputRef = useRef(null); 
  
+  // --- 1. 수퍼베이스에서 내 정보 불러오기 ---
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const response = await fetch('/api/user/profile', { // 실제 API 엔드포인트로 변경
-        method: 'GET',
-      });
+        // 수퍼베이스에 로그인된 유저 정보 가져오기
+        const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (response.ok) {
-        const userData = await response.json();
-        setEmail(userData.email);
-        setName(userData.full_name);
-        setNickname(userData.nickname);
+        if (error) throw error;
 
-        if (userData.avatar_url) {
-          setProfileImage(userData.avatar_url); // 수퍼베이스 Storage에 저장된 이미지 URL
+        if (user) {
+          setEmail(user.email);
+          // user_metadata 안에 저장된 이름, 닉네임, 사진 URL을 꺼내옵니다.
+          setName(user.user_metadata?.full_name || user.user_metadata?.name || '');
+          setNickname(user.user_metadata?.nickname || '');
+
+          if (user.user_metadata?.avatar_url) {
+            setProfileImage(user.user_metadata?.avatar_url);
+          }
         }
+      } catch (error) {
+        console.error('프로필 정보를 불러오는 중 오류 발생:', error);
       }
-    } catch (error) {
-      console.error('프로필 정보를 불러오는 중 오류 발생:', error);
-    }
-  };
+    };
+
     fetchUserProfile();
   }, []);
+
   // --- 2. 로직 함수 ---
  
-  // 버튼을 클릭했을 때 실행되는 함수
+  // 사진 변경 버튼을 클릭했을 때 실행되는 함수
   const handleProfileClick = () => {
-    // 리모컨(fileInputRef)을 통해 숨겨진 input을 클릭.
     fileInputRef.current.click();
   };
 
   const handleImageChange = (e) => {
-    // 사용자가 선택한 첫 번째 파일 가져오기
     const file = e.target.files[0]; 
     
     if (file) {
-      // 1. 나중에 백엔드(수퍼베이스)로 보낼 진짜 파일을 State에 얌전히 보관해둠
+      // 1. 나중에 수퍼베이스 Storage에 올릴 진짜 파일 보관
       setImageFile(file);
 
-      // 2. 화면에 바로 띄워주기 위해 파일을 브라우저가 읽을 수 있는 '임시 주소'로 변환
+      // 2. 화면에 바로 띄워주기 위해 미리보기 임시 주소 생성
       const reader = new FileReader();
       reader.onloadend = () => {
-        // 변환이 끝나면 profileImage State에 임시 주소를 넣음
         setProfileImage(reader.result); 
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = () => {
-    // 나중에 백엔드로 보낼 때 imageFile을 같이 보내면 됨.
-    console.log('저장된 데이터:', { 
-      imageFile: imageFile, // 실제 파일 (이걸 수퍼베이스 Storage에 올림)
-      nickname, 
-      full_name: fullName, 
-      email 
-    });
-    alert('프로필 수정 완료');
+  // 🚀 수퍼베이스에 변경사항 진짜 저장하기
+ // 🚀 수퍼베이스에 변경사항 진짜 저장하기
+  const handleSave = async () => {
+    try {
+      setIsLoading(true); // 저장 시작! 버튼 비활성화
+      let avatarUrlToSave = profileImage; // 기본적으로 기존 이미지 유지
+
+      // 🚨 1. 새로 선택한 사진(imageFile)이 있다면, Auth가 아니라 Storage에 먼저 올린다!
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`;
+        
+        // 'avatars' 보관함에 사진 파일 업로드
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, imageFile);
+
+        if (uploadError) {
+          throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+        }
+
+        // 업로드 성공 후, 짧은 인터넷 주소(URL) 가져오기
+        const { data } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+          
+        // 데이터베이스에 저장할 주소를 이 짧은 주소로 바꿔줌!
+        avatarUrlToSave = data.publicUrl; 
+      }
+
+      // 🚨 2. 사진 주소(URL)와 닉네임을 Auth에 저장한다! (이제 용량 초과 안 됨)
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          full_name: fullName,
+          nickname: nickname,
+          avatar_url: avatarUrlToSave, // 무거운 이미지 파일이 아니라 짧은 주소가 들어감
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      alert('프로필 수정 완료 🎉');
+      setImageFile(null); // 저장 성공했으니 파일 보관함 비우기
+
+    } catch (error) {
+      console.error('저장 중 오류:', error);
+      alert(error.message);
+    } finally {
+      setIsLoading(false); // 저장 끝! 버튼 활성화
+    }
   };
 
   // --- 3. UI 렌더링 ---
@@ -96,9 +141,10 @@ export default function ProfilePage({ setView }) {
             className="hidden" 
             ref={fileInputRef} 
             onChange={handleImageChange} 
+            disabled={isLoading}
           />
 
-          <div onClick={handleProfileClick} className="relative group cursor-pointer">
+          <div onClick={handleProfileClick} className={`relative group ${isLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
             <div className="w-24 h-24 rounded-full bg-gray-100 dark:bg-gray-800 border-4 border-white dark:border-[#121212] shadow-lg flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-100 dark:group-hover:border-blue-900">
               {profileImage ? (
                 <img src={profileImage} alt="프로필" className="w-full h-full object-cover" />
@@ -141,6 +187,7 @@ export default function ProfilePage({ setView }) {
                 value={fullName} 
                 onChange={(e) => setName(e.target.value)} 
                 placeholder="이름을 입력하세요" 
+                disabled={isLoading}
                 className="w-full p-4 pl-12 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-900 dark:text-white" 
               />
             </div>
@@ -156,6 +203,7 @@ export default function ProfilePage({ setView }) {
                 value={nickname} 
                 onChange={(e) => setNickname(e.target.value)} 
                 placeholder="사용할 닉네임을 입력하세요" 
+                disabled={isLoading}
                 className="w-full p-4 pl-12 text-sm rounded-2xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all font-bold text-gray-900 dark:text-white" 
               />
             </div>
@@ -167,9 +215,10 @@ export default function ProfilePage({ setView }) {
         <div className="pt-4">
           <button 
             onClick={handleSave}
-            className="w-full py-4 bg-black dark:bg-white dark:text-black text-white rounded-xl font-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-all shadow-lg shadow-black/20 uppercase tracking-widest text-sm"
+            disabled={isLoading}
+            className="w-full py-4 bg-black dark:bg-white dark:text-black text-white rounded-xl font-black hover:bg-gray-900 dark:hover:bg-gray-200 transition-all shadow-lg shadow-black/20 uppercase tracking-widest text-sm disabled:opacity-50"
           >
-            변경사항 저장
+            {isLoading ? '저장 중...' : '변경사항 저장'}
           </button>
         </div>
 

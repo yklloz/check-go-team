@@ -3,9 +3,9 @@ import { Home, School, Briefcase } from 'lucide-react';
 
 // --- 초기 데이터 및 상수 ---
 const PLACES = [
-  { id: 1, name: '집', icon: <Home size={48} />, smallIcon: <Home size={18} />, color: 'bg-green-500', isShared: true, members: ['나', '엄마', '아빠'] },
-  { id: 2, name: '기숙사', icon: <School size={48} />, smallIcon: <School size={18} />, color: 'bg-blue-500', isShared: false },
-  { id: 3, name: '회사', icon: <Briefcase size={48} />, smallIcon: <Briefcase size={18} />, color: 'bg-purple-500', isShared: false },
+  { id: 1, name: '집', icon: <Home size={48} />, smallIcon: <Home size={18} />, color: 'bg-blue-500', isShared: true, members: ['나', '엄마', '아빠'] },
+  { id: 2, name: '기숙사', icon: <School size={48} />, smallIcon: <School size={18} />, color: 'bg-green-500', isShared: false },
+  { id: 3, name: '회사', icon: <Briefcase size={48} />, smallIcon: <Briefcase size={18} />, color: 'bg-violet-500', isShared: false },
 ];
 
 const INITIAL_INVENTORY = [

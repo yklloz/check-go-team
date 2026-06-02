@@ -2,19 +2,35 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Sparkles, ImagePlus, Trash2, Plus } from 'lucide-react';
 import { uploadReceipt } from '../receipt/receipt';
 import { createInventoryItems } from '../services/inventoryService';
+import {
+  addNewProductWishlistItem,
+  fetchWishlistPlaces,
+} from '../services/wishlistService';
 
 export default function RegistrationPanel({ 
   isOpen, 
   onClose, 
   selectedPlace, 
   currentCategory, 
-  onInventoryCreated 
+  mode = 'inventory',
+  onInventoryCreated,
+  onWishlistCreated,
 }) {
   const receiptInputRef = useRef(null); 
   const cameraInputRef = useRef(null); 
   
   const [isScanning, setIsScanning] = useState(false); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
+  const isWishlistMode = mode === 'wishlist';
+  const [wishlistPlaces, setWishlistPlaces] = useState([]);
+  const [wishlistForm, setWishlistForm] = useState({
+    placeId: '',
+    name: '',
+    brand: '',
+    category: '식료품',
+    unit: '개',
+    desiredQuantity: '1',
+  });
   
   const [commonData, setCommonData] = useState({
     shop: '',
@@ -36,12 +52,38 @@ export default function RegistrationPanel({
 
   useEffect(() => {
     if (!isOpen || !currentCategory) return;
+    if (isWishlistMode) return;
 
     setItems(prevItems => prevItems.map(item => ({
       ...item,
       category: currentCategory,
     })));
-  }, [currentCategory, isOpen]);
+  }, [currentCategory, isOpen, isWishlistMode]);
+
+  useEffect(() => {
+    if (!isOpen || !isWishlistMode) return;
+
+    const loadWishlistOptions = async () => {
+      try {
+        const places = await fetchWishlistPlaces();
+
+        const matchedSelectedPlace = places.find(place => (
+          place.place_type === selectedPlace?.id || place.name === selectedPlace?.name
+        ));
+
+        setWishlistPlaces(places);
+        setWishlistForm(prev => ({
+          ...prev,
+          placeId: prev.placeId || matchedSelectedPlace?.id?.toString() || places[0]?.id?.toString() || '',
+        }));
+      } catch (error) {
+        console.error('위시리스트 옵션 불러오기 실패:', error);
+        alert(`위시리스트 등록 정보를 불러오지 못했습니다.\n${error.message || ''}`);
+      }
+    };
+
+    loadWishlistOptions();
+  }, [isOpen, isWishlistMode, selectedPlace]);
 
   const handleOcrClick = () => receiptInputRef.current.click();
   const handleCameraClick = () => cameraInputRef.current.click();
@@ -163,6 +205,42 @@ export default function RegistrationPanel({
     }
   };
 
+  const handleWishlistFormChange = (field, value) => {
+    setWishlistForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRegisterWishlist = async () => {
+    if (!wishlistForm.placeId) {
+      alert('장소를 선택해주세요.');
+      return;
+    }
+
+    if (!wishlistForm.name.trim()) {
+      alert('새 상품 이름을 입력해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await addNewProductWishlistItem(wishlistForm);
+      await onWishlistCreated?.();
+      alert('위시리스트에 추가했습니다!');
+      setWishlistForm(prev => ({
+        ...prev,
+        name: '',
+        brand: '',
+        desiredQuantity: '1',
+      }));
+      onClose();
+    } catch (error) {
+      console.error('위시리스트 추가 실패:', error);
+      alert(`위시리스트 추가 중 오류가 발생했습니다.\n${error.message || ''}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
   return (
@@ -170,8 +248,12 @@ export default function RegistrationPanel({
       
       <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F]">
         <div>
-          <h2 className="text-2xl font-black tracking-tight">품목 스마트 등록</h2>
-          <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-widest">New Inventory Entry</p>
+          <h2 className="text-2xl font-black tracking-tight">
+            {isWishlistMode ? '위시리스트 상품 등록' : '품목 스마트 등록'}
+          </h2>
+          <p className="text-xs text-gray-400 font-medium mt-1 uppercase tracking-widest">
+            {isWishlistMode ? 'New Wishlist Entry' : 'New Inventory Entry'}
+          </p>
         </div>
         <button onClick={onClose} className="p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all active:scale-90">
           <X size={24} className="text-gray-400 hover:text-black dark:hover:text-white" />
@@ -181,6 +263,17 @@ export default function RegistrationPanel({
       {/* 프로필 표시 영역 싹 지움! 아주 깔끔해졌습니다! */}
 
       <div className="p-8 overflow-y-auto h-[calc(100%-180px)] space-y-8 custom-scrollbar">
+        {isWishlistMode ? (
+          <WishlistRegisterForm
+            places={wishlistPlaces}
+            form={wishlistForm}
+            isSubmitting={isSubmitting}
+            onChange={handleWishlistFormChange}
+            onCancel={onClose}
+            onSubmit={handleRegisterWishlist}
+          />
+        ) : (
+          <>
         
         <input type="file" accept="image/*" className="hidden" ref={receiptInputRef} onChange={handleReceiptUpload} />
         <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleReceiptUpload} />
@@ -309,7 +402,111 @@ export default function RegistrationPanel({
           </div>
         </div>
 
+          </>
+        )}
       </div>
+    </div>
+  );
+}
+
+function WishlistRegisterForm({ places, form, isSubmitting, onChange, onCancel, onSubmit }) {
+  return (
+    <div className="space-y-6">
+      <div className="p-6 bg-blue-50/60 dark:bg-blue-900/10 rounded-3xl border border-blue-100 dark:border-blue-900/30">
+        <p className="text-sm font-black text-blue-700 dark:text-blue-300">아직 재고에 없는 구매 후보를 등록하세요.</p>
+        <p className="text-xs text-blue-500/80 dark:text-blue-300/70 mt-1 font-medium">
+          기존 재고 상품은 인벤토리 상세 화면에서 위시리스트로 보낼 예정입니다.
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <SelectGroup
+          label="필요한 장소"
+          value={form.placeId}
+          onChange={(event) => onChange('placeId', event.target.value)}
+        >
+          {places.map(place => (
+            <option key={place.id} value={place.id}>{place.name}</option>
+          ))}
+        </SelectGroup>
+
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <InputGroup
+              label="브랜드 (선택)"
+              placeholder="예: 하림"
+              value={form.brand}
+              onChange={(event) => onChange('brand', event.target.value)}
+            />
+            <InputGroup
+              label="상품 이름"
+              placeholder="예: 닭가슴살"
+              value={form.name}
+              onChange={(event) => onChange('name', event.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <SelectGroup
+              label="카테고리"
+              value={form.category}
+              onChange={(event) => onChange('category', event.target.value)}
+            >
+              <option>식료품</option>
+              <option>생필품</option>
+              <option>화장품</option>
+            </SelectGroup>
+            <SelectGroup
+              label="단위"
+              value={form.unit}
+              onChange={(event) => onChange('unit', event.target.value)}
+            >
+              <option>개</option>
+              <option>팩</option>
+              <option>g</option>
+              <option>ml</option>
+              <option>kg</option>
+              <option>롤</option>
+            </SelectGroup>
+          </div>
+        </div>
+
+        <InputGroup
+          label="필요 수량"
+          type="number"
+          placeholder="1"
+          value={form.desiredQuantity}
+          onChange={(event) => onChange('desiredQuantity', event.target.value)}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-100 dark:border-gray-800">
+        <button onClick={onCancel} className="py-4 bg-gray-50 dark:bg-gray-800 text-gray-500 font-black rounded-2xl hover:bg-gray-100 transition-all text-sm uppercase tracking-widest">
+          Cancel
+        </button>
+        <button
+          onClick={onSubmit}
+          disabled={isSubmitting || places.length === 0}
+          className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
+        >
+          {isSubmitting ? 'Adding...' : 'Add Wishlist'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function SelectGroup({ label, value, onChange, children }) {
+  return (
+    <div className="space-y-2">
+      <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">{label}</label>
+      <select
+        value={value}
+        onChange={onChange}
+        className="w-full p-3.5 text-sm rounded-xl border border-gray-100 dark:bg-[#2A2A2A] dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-bold shadow-inner"
+      >
+        {children}
+      </select>
     </div>
   );
 }

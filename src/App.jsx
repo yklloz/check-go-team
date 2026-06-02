@@ -14,10 +14,10 @@ import GroceryPage from './pages/GroceryPage';
 import EssentialsPage from './pages/DailySuppliesPage';
 import CosmeticsPage from './pages/CosmeticsPage';
 import LowStockPage from './LowStockPage';
+import { consumeInventoryItem, fetchInventory, updateInventoryItem } from './services/inventoryService';
+import { addWishlistItem } from './services/wishlistService';
 
-import { fetchInventory } from './services/inventoryService';
-
-import { PLACES, INITIAL_WISHLIST } from './data/mockData';
+import { PLACES } from './data/mockData';
 
 
 
@@ -34,7 +34,7 @@ export default function App() {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [inventoryError, setInventoryError] = useState('');
-  const [wishlist] = useState(INITIAL_WISHLIST);
+  const [wishlistRefreshKey, setWishlistRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState(() => {
     const savedView = localStorage.getItem('currentView');
@@ -44,7 +44,6 @@ export default function App() {
     const savedPlace = localStorage.getItem('selectedPlace');
     return savedPlace ? JSON.parse(savedPlace) : null;
   });
-  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     localStorage.setItem('currentView', view);
@@ -100,30 +99,56 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        // inventories 테이블에 있는 모든 데이터 가져오기
-        const { data, error } = await supabase
-          .from('inventories')
-          .select('*');
+  const handleAddInventoryItemToWishlist = async (item) => {
+    if (!item.placeId || !item.productId) {
+      alert('위시리스트에 추가할 상품 정보를 찾지 못했습니다.');
+      return;
+    }
 
-        if (error) {
-          console.error('데이터 불러오기 에러:', error.message);
-          return;
-        }
+    try {
+      await addWishlistItem({
+        placeId: item.placeId,
+        productId: item.productId,
+        desiredQuantity: 1,
+      });
+      setWishlistRefreshKey(prev => prev + 1);
+      alert('위시리스트에 추가했습니다!');
+    } catch (error) {
+      console.error('위시리스트 추가 실패:', error);
+      alert(`위시리스트 추가 중 오류가 발생했습니다.\n${error.message || ''}`);
+    }
+  };
 
-        // 통신에 성공해서 데이터를 받았다면 State 업데이트
-        if (data) {
-          setInventory(data);
-        }
-      } catch (error) {
-        console.error('수퍼베이스 서버 통신 중 오류 발생:', error);
-      }
-    };
-  
-    fetchInventory(); 
-  }, []); // 빈 배열을 넣어서 컴포넌트가 처음 화면에 렌더링될 때 딱 한 번만 실행되게 만듦
+  const handleUpdateInventoryItem = async ({ item, updates }) => {
+    try {
+      const nextInventory = await updateInventoryItem({
+        item,
+        updates,
+        selectedPlace,
+      });
+      setInventory(nextInventory);
+      alert('상품 정보를 수정했습니다!');
+    } catch (error) {
+      console.error('상품 수정 실패:', error);
+      alert(`상품 수정 중 오류가 발생했습니다.\n${error.message || ''}`);
+      throw error;
+    }
+  };
+
+  const handleConsumeInventoryItem = async (item) => {
+    try {
+      const nextInventory = await consumeInventoryItem({
+        item,
+        amount: 1,
+        selectedPlace,
+      });
+      setInventory(nextInventory);
+      alert('재고 1개를 소진했습니다.');
+    } catch (error) {
+      console.error('수량 소진 실패:', error);
+      alert(`수량 소진 중 오류가 발생했습니다.\n${error.message || ''}`);
+    }
+  };
 
   useEffect(() => {
     const place = selectedPlace;
@@ -148,28 +173,6 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
-
-  useEffect(() => {
-    const checkCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserEmail(user.email);
-      }
-    };
-    checkCurrentUser();
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session && session.user) {
-        setUserEmail(session.user.email);
-      } else {
-        setUserEmail(""); // 로그아웃 시 바구니 비우기
-      }
-    });
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, []);
-
 
   // 뷰 전환 함수
   const navigateTo = (newView, category = null) => {
@@ -237,19 +240,10 @@ export default function App() {
     setSearchQuery,
     currentCategory,
     onInventoryCreated: loadInventory,
+    onWishlistCreated: () => setWishlistRefreshKey(prev => prev + 1),
     onLogout: handleLogout
   };
-  
-  const userStatusUI = (
-    <div className="mb-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow text-center">
-      {userEmail ? (
-        <p className="font-bold text-green-600 dark:text-green-400">🟢 현재 접속중: {userEmail}</p>
-      ) : (
-        <p className="font-bold text-red-500">🔴 로그인이 필요합니다.</p>
-      )}
-    </div>
-  );
-  
+
   // 2. Layout(사이드바)이 필요한 화면들
   if (view === 'dashboard') {
     return (
@@ -266,13 +260,34 @@ export default function App() {
     return (
       <Layout {...layoutProps}>
         {currentCategory === '식료품' && (
-          <GroceryPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <GroceryPage
+            inventory={inventory}
+            inventoryError={inventoryError}
+            setIsSidePanelOpen={setIsSidePanelOpen}
+            onAddWishlist={handleAddInventoryItemToWishlist}
+            onUpdateItem={handleUpdateInventoryItem}
+            onConsumeItem={handleConsumeInventoryItem}
+          />
         )}
         {currentCategory === '생필품' && (
-          <EssentialsPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <EssentialsPage
+            inventory={inventory}
+            inventoryError={inventoryError}
+            setIsSidePanelOpen={setIsSidePanelOpen}
+            onAddWishlist={handleAddInventoryItemToWishlist}
+            onUpdateItem={handleUpdateInventoryItem}
+            onConsumeItem={handleConsumeInventoryItem}
+          />
         )}
         {currentCategory === '화장품' && (
-          <CosmeticsPage inventory={inventory} inventoryError={inventoryError} setIsSidePanelOpen={setIsSidePanelOpen} />
+          <CosmeticsPage
+            inventory={inventory}
+            inventoryError={inventoryError}
+            setIsSidePanelOpen={setIsSidePanelOpen}
+            onAddWishlist={handleAddInventoryItemToWishlist}
+            onUpdateItem={handleUpdateInventoryItem}
+            onConsumeItem={handleConsumeInventoryItem}
+          />
         )}
       </Layout>
     );
@@ -282,9 +297,8 @@ export default function App() {
     return (
       <Layout {...layoutProps}>
         <WishlistPage 
-          wishlist={wishlist} 
           PLACES={PLACES} 
-          setIsSidePanelOpen={setIsSidePanelOpen} 
+          wishlistRefreshKey={wishlistRefreshKey}
         />
       </Layout>
     );

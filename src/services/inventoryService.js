@@ -94,6 +94,8 @@ const getLatestPurchaseByProductId = async ({ userId, productIds }) => {
   const { data, error } = await supabase
     .from('purchase_order_items')
     .select(`
+      id,
+      purchase_order_id,
       product_id,
       unit_price,
       line_total,
@@ -128,6 +130,10 @@ const normalizeInventoryItem = ({ inventory, latestPurchase }) => {
 
   return {
     id: inventory.id,
+    productId: inventory.product_id,
+    placeId: inventory.place_id,
+    latestPurchaseOrderId: latestPurchase?.purchase_order_id || null,
+    latestPurchaseOrderItemId: latestPurchase?.id || null,
     category: DISPLAY_CATEGORY_NAME_MAP[category] || category,
     name: product.name || '',
     brand: product.brand || '',
@@ -350,6 +356,110 @@ export const createInventoryItems = async ({ items, commonData, selectedPlace })
       if (insertError) throw insertError;
     }
   }
+
+  return fetchInventory(selectedPlace);
+};
+
+export const updateInventoryItem = async ({ item, updates, selectedPlace }) => {
+  const user = await getCurrentUser();
+  const quantity = Number(updates.quantity);
+
+  if (!updates.name?.trim()) {
+    throw new Error('상품 이름을 입력해주세요.');
+  }
+
+  if (Number.isNaN(quantity) || quantity < 0) {
+    throw new Error('수량은 0 이상으로 입력해주세요.');
+  }
+
+  const { error: inventoryError } = await supabase
+    .from('inventories')
+    .update({
+      current_quantity: quantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', item.id)
+    .eq('user_id', user.id);
+
+  if (inventoryError) throw inventoryError;
+
+  const { error: productError } = await supabase
+    .from('products')
+    .update({
+      name: updates.name.trim(),
+      brand: updates.brand?.trim() || null,
+    })
+    .eq('id', item.productId);
+
+  if (productError) throw productError;
+
+  if (item.latestPurchaseOrderId) {
+    const store = await getOrCreateStore(updates.shop?.trim());
+
+    const { error: orderError } = await supabase
+      .from('purchase_orders')
+      .update({
+        store_id: store?.id || null,
+      })
+      .eq('id', item.latestPurchaseOrderId)
+      .eq('user_id', user.id);
+
+    if (orderError) throw orderError;
+  }
+
+  return fetchInventory(selectedPlace);
+};
+
+export const consumeInventoryItem = async ({ item, amount = 1, selectedPlace }) => {
+  const user = await getCurrentUser();
+  const consumeAmount = Number(amount) || 1;
+
+  if (consumeAmount <= 0) {
+    throw new Error('소진 수량은 1 이상이어야 합니다.');
+  }
+
+  const { data: inventory, error: readError } = await supabase
+    .from('inventories')
+    .select('id, current_quantity, product_id, place_id')
+    .eq('id', item.id)
+    .eq('user_id', user.id)
+    .single();
+
+  if (readError) throw readError;
+
+  const currentQuantity = Number(inventory.current_quantity) || 0;
+  const nextQuantity = Math.max(currentQuantity - consumeAmount, 0);
+  const actualConsumed = currentQuantity - nextQuantity;
+
+  if (actualConsumed <= 0) {
+    throw new Error('이미 재고가 0입니다.');
+  }
+
+  const { error: movementError } = await supabase
+    .from('stock_movements')
+    .insert({
+      user_id: user.id,
+      product_id: inventory.product_id,
+      place_id: inventory.place_id,
+      movement_type: 'OUT',
+      quantity: actualConsumed,
+      moved_at: new Date().toISOString(),
+      purchase_order_item_id: item.latestPurchaseOrderItemId || null,
+      note: '수량 소진',
+    });
+
+  if (movementError) throw movementError;
+
+  const { error: updateError } = await supabase
+    .from('inventories')
+    .update({
+      current_quantity: nextQuantity,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', inventory.id)
+    .eq('user_id', user.id);
+
+  if (updateError) throw updateError;
 
   return fetchInventory(selectedPlace);
 };

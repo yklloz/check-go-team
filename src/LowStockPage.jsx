@@ -21,7 +21,7 @@ export default function LowStockPage({ setView }) {
           *,
           product_insights (*)
         `)
-        .eq('current_quantity', 1);
+        .lte('current_quantity', 1);
 
       if (error) throw error;
       setLowStockItems(data);
@@ -97,7 +97,7 @@ export default function LowStockPage({ setView }) {
       {loading ? (
         <p className="text-center text-gray-500 mt-10 font-medium">데이터를 불러오는 중입니다...</p>
       ) : lowStockItems.length === 0 ? (
-        <p className="text-center text-gray-500 mt-10 font-medium">현재 재고가 1개인 물품이 없습니다! 🎉</p>
+        <p className="text-center text-gray-500 mt-10 font-medium">현재 재고가 1개 이하인 물품이 없습니다! 🎉</p>
       ) : sortedItems.length === 0 ? (
         <p className="text-center text-gray-500 mt-10 font-medium">해당 카테고리에는 재고가 부족한 물품이 없습니다.</p>
       ) : (

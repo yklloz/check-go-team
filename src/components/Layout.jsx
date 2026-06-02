@@ -14,7 +14,8 @@ import {
   Moon,
   Sun,
   Users,
-  CheckSquare
+  CheckSquare,
+  AlertTriangle
 } from 'lucide-react';
 
 import RegistrationPanel from './RegistrationPanel'; 
@@ -89,7 +90,7 @@ export default function Layout({
         <nav className="flex-1 space-y-1 overflow-y-auto custom-scrollbar p-4 pr-3">
           <NavItem active={view === 'dashboard'} onClick={() => setView('dashboard')} icon={<LayoutDashboard size={18}/>} label="홈" />
           <NavItem active={view === 'wishlist'} onClick={() => setView('wishlist')} icon={<ShoppingCart size={18}/>} label="위시리스트" />
-          
+          <NavItem active={view === 'low-stock'} onClick={() => setView('low-stock')} icon={<AlertTriangle size={18}/>} label="재고 부족 확인" />
           <div className="pt-6 pb-2 px-2 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">Inventory</div>
           <NavItem active={view === 'list' && currentCategory === '식료품'} onClick={() => navigateTo('list', '식료품')} icon={<Apple size={18}/>} label="식료품" />
           <NavItem active={view === 'list' && currentCategory === '생필품'} onClick={() => navigateTo('list', '생필품')} icon={<Package size={18}/>} label="생필품" />
@@ -99,6 +100,7 @@ export default function Layout({
           <NavItem active={view === 'calendar'} onClick={() => setView('calendar')} icon={<Calendar size={18}/>} label="가계부/캘린더" />
           <NavItem active={view === 'profile'} onClick={() => setView('profile')} icon={<User size={18}/>} label="프로필 설정" />
         </nav>
+
 
         {/* 프로필 */}
         <div className="p-4 mx-4 mb-2 bg-white dark:bg-[#252525] border border-gray-100 dark:border-[#333] rounded-2xl shadow-sm">
@@ -133,6 +135,8 @@ export default function Layout({
           </button>
         </div>
       </aside>
+
+    
 
       {/* --- 메인 콘텐츠 영역 --- */}
       <main className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-[#121212]">

@@ -13,6 +13,8 @@ import PlaceSelectPage from './pages/PlaceSelectPage';
 import GroceryPage from './pages/GroceryPage';
 import EssentialsPage from './pages/DailySuppliesPage';
 import CosmeticsPage from './pages/CosmeticsPage';
+import LowStockPage from './LowStockPage';
+
 import { fetchInventory } from './services/inventoryService';
 
 import { PLACES, INITIAL_WISHLIST } from './data/mockData';
@@ -293,6 +295,14 @@ export default function App() {
     return (
       <Layout {...layoutProps }>
         <ProfilePage setView={setView} />
+      </Layout>
+    );
+  }
+
+  if (view === 'low-stock') {
+    return (
+      <Layout {...layoutProps}>
+        <LowStockPage setView={setView} />
       </Layout>
     );
   }

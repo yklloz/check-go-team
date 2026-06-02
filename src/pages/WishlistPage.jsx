@@ -11,9 +11,9 @@ import {
         <div className="space-y-8">
           <div className="flex flex-col gap-1">
             <h1 className="text-4xl font-black tracking-tight flex items-center gap-4">
-              <ShoppingCart size={36} className="text-blue-600" /> 전역 위시리스트
+              <ShoppingCart size={36} className="text-blue-600" /> 위시리스트
             </h1>
-            <p className="text-gray-400 font-medium ml-1">각 장소에서 필요한 모든 물품을 한눈에 관리하고 추가하세요.</p>
+            <p className="text-gray-400 font-medium ml-1">각 장소에서 필요한 모든 물품을 한눈에 관리하고 추가하세요</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -27,7 +27,7 @@ import {
                       <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl">
                         {place.smallIcon}
                       </div>
-                      <h3 className="font-black text-lg tracking-tight">{place.name} 첵고</h3>
+                      <h3 className="font-black text-lg tracking-tight">{place.name} </h3>
                     </div>
                     {/* 우측 상단 + 추가 버튼 */}
                     <button 

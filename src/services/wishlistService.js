@@ -60,41 +60,68 @@ export const fetchWishlistProducts = async () => {
 export const fetchWishlistItems = async () => {
   const user = await getCurrentUser();
 
-  const { data, error } = await supabase
+  const { data: wishlistRows, error } = await supabase
     .from('wishlist_items')
-    .select(`
-      id,
-      desired_quantity,
-      status,
-      created_at,
-      places (id, name, place_type),
-      products (
-        id,
-        name,
-        brand,
-        unit,
-        categories (name)
-      )
-    `)
+    .select('id, place_id, product_id, desired_quantity, status, created_at')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
   if (error) throw error;
 
-  return (data || []).map(item => ({
+  const rows = wishlistRows || [];
+  if (rows.length === 0) return [];
+
+  const placeIds = [...new Set(rows.map(item => item.place_id).filter(Boolean))];
+  const productIds = [...new Set(rows.map(item => item.product_id).filter(Boolean))];
+
+  const [{ data: places, error: placesError }, { data: products, error: productsError }] = await Promise.all([
+    supabase
+      .from('places')
+      .select('id, name, place_type')
+      .in('id', placeIds),
+    supabase
+      .from('products')
+      .select('id, name, brand, unit, category_id')
+      .in('id', productIds),
+  ]);
+
+  if (placesError) throw placesError;
+  if (productsError) throw productsError;
+
+  const categoryIds = [...new Set((products || []).map(product => product.category_id).filter(Boolean))];
+  const { data: categories, error: categoriesError } = categoryIds.length > 0
+    ? await supabase
+      .from('categories')
+      .select('id, name')
+      .in('id', categoryIds)
+    : { data: [], error: null };
+
+  if (categoriesError) throw categoriesError;
+
+  const placeById = new Map((places || []).map(place => [place.id, place]));
+  const productById = new Map((products || []).map(product => [product.id, product]));
+  const categoryById = new Map((categories || []).map(category => [category.id, category]));
+
+  return rows.map(item => {
+    const place = placeById.get(item.place_id);
+    const product = productById.get(item.product_id);
+    const category = categoryById.get(product?.category_id);
+
+    return {
     id: item.id,
-    placeId: item.places?.id,
-    place: item.places?.place_type,
-    placeName: item.places?.name || '',
-    productId: item.products?.id,
-    name: item.products?.name || '',
-    brand: item.products?.brand || '',
-    unit: item.products?.unit || '개',
-    category: DISPLAY_CATEGORY_NAME_MAP[item.products?.categories?.name] || item.products?.categories?.name || '',
+    placeId: place?.id,
+    place: place?.place_type,
+    placeName: place?.name || '',
+    productId: product?.id,
+    name: product?.name || '',
+    brand: product?.brand || '',
+    unit: product?.unit || '개',
+    category: DISPLAY_CATEGORY_NAME_MAP[category?.name] || category?.name || '',
     desiredQuantity: Number(item.desired_quantity) || 0,
     status: item.status,
     checked: item.status === 'purchased',
-  }));
+    };
+  });
 };
 
 export const addWishlistItem = async ({ placeId, productId, desiredQuantity }) => {

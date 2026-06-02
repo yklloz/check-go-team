@@ -13,6 +13,7 @@ import PlaceSelectPage from './pages/PlaceSelectPage';
 import GroceryPage from './pages/GroceryPage';
 import EssentialsPage from './pages/DailySuppliesPage';
 import CosmeticsPage from './pages/CosmeticsPage';
+import LowStockPage from './LowStockPage';
 import { consumeInventoryItem, fetchInventory, updateInventoryItem } from './services/inventoryService';
 import { addWishlistItem } from './services/wishlistService';
 
@@ -79,6 +80,8 @@ export default function App() {
         setView('login');
       }
     });
+
+  
 
     return () => {
       authListener.subscription.unsubscribe();
@@ -162,7 +165,7 @@ export default function App() {
     });
   }, [selectedPlace]);
 
-//다크모드
+ //다크모드
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
@@ -306,6 +309,14 @@ export default function App() {
     return (
       <Layout {...layoutProps }>
         <ProfilePage setView={setView} />
+      </Layout>
+    );
+  }
+
+  if (view === 'low-stock') {
+    return (
+      <Layout {...layoutProps}>
+        <LowStockPage setView={setView} />
       </Layout>
     );
   }

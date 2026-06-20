@@ -6,21 +6,33 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 회원가입 로직 (중복 제거 및 최적화)
   const handleSignup = async () => {
-    if (!name || !email || !password) {
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName || !trimmedEmail || !password) {
       alert("모든 정보를 입력해주세요.");
       return;
     }
 
+    if (password.length < 6) {
+      alert("비밀번호는 6자 이상 입력해주세요.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: trimmedEmail,
         password,
         options: {
           data: {
-            full_name: name,
+            full_name: trimmedName,
+            name: trimmedName,
           },
           emailRedirectTo: window.location.origin,
         },
@@ -34,12 +46,14 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
           setView('place-select');
         } else {
           alert("회원가입 성공! 가입하신 메일함에서 인증 링크를 클릭한 뒤 로그인해주세요.");
-          if (onSignupSuccess) onSignupSuccess();
+          if (onSignupSuccess) onSignupSuccess({ skipAlert: true });
         }
       }
     } catch (error) {
       console.error("통신 에러:", error);
-      alert("서버 연결에 실패했습니다.");
+      alert(`서버 연결에 실패했습니다.\n${error.message || ''}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -95,9 +109,10 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
 
           <button 
             onClick={handleSignup}
+            disabled={isSubmitting}
             className="w-full py-4 bg-black text-white rounded-xl font-black hover:bg-gray-900 transition-all mt-4 shadow-lg shadow-black/20 uppercase tracking-widest"
           >
-            회원 가입
+            {isSubmitting ? '가입 중...' : '회원 가입'}
           </button>
         </div>
       </div>

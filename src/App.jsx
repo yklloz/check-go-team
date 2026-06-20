@@ -208,9 +208,11 @@ export default function App() {
     return (
       <SignupPage 
         setView={setView} 
-        onSignupSuccess={() => {
+        onSignupSuccess={({ skipAlert } = {}) => {
           // 실제 개발 시에는 여기에 회원가입 API 연동 로직이 들어감
-          alert('가입이 완료되었습니다! 로그인해주세요.');
+          if (!skipAlert) {
+            alert('가입이 완료되었습니다! 로그인해주세요.');
+          }
           setView('login');
         }} 
       />

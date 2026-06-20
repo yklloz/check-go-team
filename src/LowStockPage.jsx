@@ -55,24 +55,18 @@ export default function LowStockPage({ setView }) {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      {/* 뒤로 가기 및 타이틀 */}
-      <div className="flex items-center gap-4 mb-6">
-        <button 
-          onClick={() => setView('dashboard')} 
-          className="text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors"
-        >
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-2xl font-bold flex items-center gap-2 text-red-600 dark:text-red-500">
-          <AlertTriangle size={28} />
-        재고 부족 확인
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <h1 className="text-xl md:text-3xl font-black flex items-center gap-3 md:gap-4">
+          <AlertTriangle size={24} className="text-red-500 md:hidden" />
+          <AlertTriangle size={32} className="text-red-500 hidden md:block" />
+          재고 부족 확인
         </h1>
       </div>
 
       {/*  카테고리 선택 필터 (가로 스크롤 가능) */}
       {!loading && lowStockItems.length > 0 && (
-        <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2 custom-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 custom-scrollbar">
           <div className="flex items-center gap-2 text-gray-500 mr-2">
             <Filter size={18} />
             <span className="text-sm font-bold whitespace-nowrap">분류:</span>
@@ -101,7 +95,7 @@ export default function LowStockPage({ setView }) {
       ) : sortedItems.length === 0 ? (
         <p className="text-center text-gray-500 mt-10 font-medium">해당 카테고리에는 재고가 부족한 물품이 없습니다.</p>
       ) : (
-        <div className="bg-white dark:bg-[#1E1E1E] rounded-2xl border border-gray-200 dark:border-[#2F2F2F] shadow-sm overflow-hidden">
+        <div className="border border-gray-100 dark:border-[#2F2F2F] rounded-3xl bg-white dark:bg-transparent overflow-hidden shadow-xl shadow-gray-100/50 dark:shadow-none">
           {sortedItems.map((item, index) => {
             const isFavorite = favorites.includes(item.id);
             const info = item.product_insights || {};

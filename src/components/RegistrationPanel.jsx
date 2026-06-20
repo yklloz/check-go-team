@@ -244,9 +244,9 @@ export default function RegistrationPanel({
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
   return (
-    <div className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-      
-      <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F]">
+    <div className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+
+      <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F] flex-shrink-0">
         <div>
           <h2 className="text-2xl font-black tracking-tight">
             {isWishlistMode ? '위시리스트 상품 등록' : '품목 스마트 등록'}
@@ -262,7 +262,7 @@ export default function RegistrationPanel({
       
       {/* 프로필 표시 영역 싹 지움! 아주 깔끔해졌습니다! */}
 
-      <div className="p-8 overflow-y-auto h-[calc(100%-180px)] space-y-8 custom-scrollbar">
+      <div className="p-8 overflow-y-auto flex-1 space-y-8 custom-scrollbar">
         {isWishlistMode ? (
           <WishlistRegisterForm
             places={wishlistPlaces}

@@ -32,10 +32,10 @@ import { addWishlistItem } from '../services/wishlistService';
     return (
         <div className="space-y-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-black flex items-center gap-4">
-              {currentCategory === '식료품' && <Apple size={32} className="text-red-500" />}
-              {currentCategory === '생필품' && <Package size={32} className="text-blue-500" />}
-              {currentCategory === '화장품' && <Sparkles size={32} className="text-pink-500" />}
+            <h1 className="text-xl md:text-3xl font-black flex items-center gap-3 md:gap-4">
+              {currentCategory === '식료품' && <><Apple size={24} className="text-red-500 md:hidden" /><Apple size={32} className="text-red-500 hidden md:block" /></>}
+              {currentCategory === '생필품' && <><Package size={24} className="text-blue-500 md:hidden" /><Package size={32} className="text-blue-500 hidden md:block" /></>}
+              {currentCategory === '화장품' && <><Sparkles size={24} className="text-pink-500 md:hidden" /><Sparkles size={32} className="text-pink-500 hidden md:block" /></>}
               {currentCategory} 리스트
             </h1>
           </div>

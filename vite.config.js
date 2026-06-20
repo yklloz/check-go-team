@@ -9,6 +9,6 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    allowedHosts: true, // 👈 ngrok 외부 접속을 허용하는 마법의 주문!
+    allowedHosts: true, 
   }
 })

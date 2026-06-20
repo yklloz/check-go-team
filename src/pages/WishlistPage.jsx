@@ -137,11 +137,12 @@ export default function WishlistPage({ PLACES }) {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-4xl font-black tracking-tight flex items-center gap-4">
-          <ShoppingCart size={36} className="text-blue-600" /> 위시리스트
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl md:text-3xl font-black flex items-center gap-3 md:gap-4">
+          <ShoppingCart size={24} className="text-blue-600 md:hidden" />
+          <ShoppingCart size={32} className="text-blue-600 hidden md:block" />
+          위시리스트
         </h1>
-        <p className="text-gray-400 font-medium ml-1">각 장소에서 필요한 모든 물품을 한눈에 관리하고 추가하세요</p>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

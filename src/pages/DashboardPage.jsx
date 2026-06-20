@@ -4,14 +4,11 @@ import StatCard from '../components/StatCard';
 
 export default function DashboardPage({ selectedPlace }) {
   return (
-    <div className="space-y-10">
-      <div className="flex justify-between items-end">
-        <div className="space-y-1">
-          <p className="text-xs text-blue-500 font-black uppercase tracking-widest">Home</p>
-          <h1 className="text-4xl font-black tracking-tight">{selectedPlace?.name}에 어떤 게 필요하신가요?</h1>
-        </div>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl md:text-3xl font-black tracking-tight">{selectedPlace?.name}에 어떤 게 필요하신가요?</h1>
         {selectedPlace?.isShared && (
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all">
+          <button className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all flex-shrink-0">
             <Share2 size={18} />
             멤버 초대
           </button>

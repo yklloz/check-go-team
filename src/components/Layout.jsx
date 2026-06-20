@@ -1,5 +1,5 @@
 // 왼쪽 사이드 바 + 상단 헤더 틀
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   LayoutDashboard,
   Apple,
@@ -7,7 +7,6 @@ import {
   Sparkles,
   ShoppingCart,
   User,
-  Search,
   Plus,
   Calendar,
   LogOut,
@@ -17,6 +16,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  ChevronsLeft,
   Check
 } from 'lucide-react';
 
@@ -77,6 +77,11 @@ export default function Layout({
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPlaceDropdownOpen, setIsPlaceDropdownOpen] = useState(false);
+  const mainRef = useRef(null);
+
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [view]);
 
   const handlePlaceSelect = (place) => {
     setSelectedPlace(place);
@@ -113,17 +118,25 @@ export default function Layout({
       {/* --- 왼쪽 메인 사이드바 (PC 전용) --- */}
       <aside className="hidden md:flex w-64 border-r border-gray-200 dark:border-[#2F2F2F] flex-col bg-[#FBFBFB] dark:bg-[#181818] transition-colors duration-200">
 
-        {/* 상단: 선택된 장소 드롭다운 */}
-        <div className="relative p-6 border-b border-gray-100 dark:border-[#2F2F2F]">
+        {/* 로고 */}
+        <div className="px-6 pt-6 pb-4 cursor-pointer" onClick={() => setView('dashboard')}>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-md text-sm flex-shrink-0">C</div>
+            <span className="text-xl font-black tracking-tighter text-gray-900 dark:text-white">Check-go</span>
+          </div>
+        </div>
+
+        {/* 장소 드롭다운 */}
+        <div className="relative px-4 pb-4 border-b border-gray-100 dark:border-[#2F2F2F]">
           <button
             onClick={() => setIsPlaceDropdownOpen(prev => !prev)}
-            className="flex items-center gap-2 w-full group"
+            className="flex items-center gap-1.5 group px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
             <div className={`w-3 h-3 rounded-full flex-shrink-0 ${selectedPlace?.color || 'bg-blue-500'}`}></div>
-            <h1 className="text-xl font-black text-gray-800 dark:text-white group-hover:text-blue-500 transition-colors flex-1 text-left">
+            <span className="text-base font-black text-gray-800 dark:text-gray-100 group-hover:text-blue-500 transition-colors">
               {selectedPlace ? selectedPlace.name : '나의 공간'}
-            </h1>
-            <ChevronDown size={16} className={`text-gray-400 group-hover:text-blue-500 transition-all flex-shrink-0 ${isPlaceDropdownOpen ? 'rotate-180' : ''}`} />
+            </span>
+            <ChevronDown size={14} className={`text-gray-400 group-hover:text-blue-500 transition-all flex-shrink-0 ${isPlaceDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isPlaceDropdownOpen && (
@@ -208,24 +221,24 @@ export default function Layout({
           <div className="relative w-72 h-full bg-[#FBFBFB] dark:bg-[#181818] flex flex-col shadow-2xl">
             {/* 헤더 */}
             <div className="p-5 border-b border-gray-100 dark:border-[#2F2F2F]">
-              <div className="flex items-center justify-between mb-0">
+              <div className="flex items-center justify-between">
                 <button
                   onClick={() => setIsPlaceDropdownOpen(prev => !prev)}
-                  className="flex items-center gap-2 flex-1 group"
+                  className="flex items-center gap-2 group px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 >
                   <div className={`w-3 h-3 rounded-full flex-shrink-0 ${selectedPlace?.color || 'bg-blue-500'}`}></div>
-                  <h1 className="text-xl font-black text-gray-800 dark:text-white group-hover:text-blue-500 transition-colors flex-1 text-left">
+                  <span className="text-2xl font-black text-gray-800 dark:text-white group-hover:text-blue-500 transition-colors">
                     {selectedPlace ? selectedPlace.name : '나의 공간'}
-                  </h1>
-                  <ChevronDown size={16} className={`text-gray-400 group-hover:text-blue-500 transition-all ${isPlaceDropdownOpen ? 'rotate-180' : ''}`} />
+                  </span>
+                  <ChevronDown size={17} className={`text-gray-400 group-hover:text-blue-500 transition-all ${isPlaceDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-400 ml-2 flex-shrink-0">
-                  <X size={22} />
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-gray-400 flex-shrink-0">
+                  <ChevronsLeft size={22} />
                 </button>
               </div>
 
               {isPlaceDropdownOpen && (
-                <div className="mt-3 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#333] rounded-2xl overflow-hidden">
+                <div className="mt-2 bg-gray-50 dark:bg-[#222] border border-gray-100 dark:border-[#333] rounded-2xl overflow-hidden">
                   {places.map(place => (
                     <button
                       key={place.id}
@@ -258,6 +271,10 @@ export default function Layout({
                   {isDarkMode ? <Sun size={18}/> : <Moon size={18}/>}
                   <span className="font-semibold">{isDarkMode ? '라이트 모드' : '다크 모드'}</span>
                 </button>
+                <button onClick={() => setIsGrayscale(!isGrayscale)} className={`flex items-center gap-3 w-full p-3 text-sm rounded-xl transition-all ${isGrayscale ? 'text-gray-800 dark:text-gray-200 bg-gray-100 dark:bg-gray-800' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}>
+                  <Palette size={18}/>
+                  <span className="font-semibold">{isGrayscale ? '컬러 모드' : '무채색 미리보기'}</span>
+                </button>
                 <button onClick={onLogout} className="flex items-center gap-3 w-full p-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all">
                   <LogOut size={18}/>
                   <span className="font-semibold">로그아웃</span>
@@ -289,10 +306,10 @@ export default function Layout({
       )}
 
       {/* --- 메인 콘텐츠 영역 --- */}
-      <main className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-[#121212] min-w-0">
-        <header className="h-14 md:h-16 border-b border-gray-100 dark:border-[#2F2F2F] flex items-center justify-between px-4 md:px-10 sticky top-0 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-md z-10">
+      <main ref={mainRef} className="flex-1 overflow-y-auto flex flex-col bg-white dark:bg-[#121212] min-w-0">
+        <header className="h-14 flex items-center justify-between px-4 md:px-10 sticky top-0 bg-white/80 dark:bg-[#121212]/80 backdrop-blur-md z-10">
 
-          <div className="flex items-center flex-1 gap-3 md:gap-8 min-w-0">
+          <div className="flex items-center gap-3 min-w-0">
             {/* 모바일: 햄버거 버튼 */}
             <button
               className="md:hidden flex-shrink-0 p-1 text-gray-600 dark:text-gray-300"
@@ -301,30 +318,14 @@ export default function Layout({
               <Menu size={22} />
             </button>
 
-            {/* 로고 */}
-            <div className="flex items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => setView('dashboard')}>
-              <div className="w-7 h-7 md:w-8 md:h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-md text-sm">
-                C
-              </div>
-              <span className="text-lg md:text-xl font-black tracking-tighter text-gray-900 dark:text-white hidden sm:block">
-                Check-go
-              </span>
-            </div>
-
-            {/* 검색창 */}
-            <div className="flex-1 flex items-center bg-gray-50 dark:bg-[#1C1C1C] rounded-xl px-3 py-2 border border-transparent focus-within:border-blue-500 transition-all min-w-0">
-              <Search size={16} className="text-gray-400 mr-2 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder={`검색...`}
-                className="bg-transparent border-none focus:outline-none w-full text-sm placeholder:text-gray-400 font-medium text-gray-900 dark:text-white min-w-0"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            {/* 로고 - 모바일에서만 표시 */}
+            <div className="md:hidden flex items-center gap-2 flex-shrink-0 cursor-pointer" onClick={() => setView('dashboard')}>
+              <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black shadow-md text-sm">C</div>
+              <span className="text-lg font-black tracking-tighter text-gray-900 dark:text-white">Check-go</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-5 flex-shrink-0 ml-2 md:ml-0">
+          <div className="flex items-center gap-2 md:gap-5 flex-shrink-0">
             {selectedPlace?.isShared && (
                <div className="hidden md:flex -space-x-2 mr-2">
                  {[1,2,3].map(i => (
@@ -336,17 +337,16 @@ export default function Layout({
             )}
             <button
               onClick={() => setIsSidePanelOpen(true)}
-              className="flex items-center gap-1 md:gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
+              className="flex items-center justify-center gap-2 px-3 md:px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
             >
               <Plus size={16} />
-              <span className="hidden sm:inline">상품 등록</span>
-              <span className="sm:hidden">등록</span>
+              <span className="hidden md:inline">상품 등록</span>
             </button>
           </div>
         </header>
 
         {/* 콘텐츠 — 모바일은 하단 탭 바 높이만큼 pb 확보 */}
-        <div className="p-4 md:p-10 lg:p-14 max-w-7xl mx-auto w-full pb-20 md:pb-10">
+        <div className="px-4 pt-4 pb-20 md:px-10 md:pt-8 md:pb-8 lg:px-14 lg:pt-10 max-w-7xl mx-auto w-full">
           {children}
         </div>
       </main>
@@ -358,12 +358,6 @@ export default function Layout({
           label="홈"
           active={view === 'dashboard'}
           onClick={() => setView('dashboard')}
-        />
-        <BottomTabItem
-          icon={<ShoppingCart size={20} />}
-          label="위시"
-          active={view === 'wishlist'}
-          onClick={() => setView('wishlist')}
         />
         <BottomTabItem
           icon={<Apple size={20} />}
@@ -378,10 +372,16 @@ export default function Layout({
           onClick={() => navigateTo('list', '생필품')}
         />
         <BottomTabItem
-          icon={<User size={20} />}
-          label="더보기"
-          active={isMobileMenuOpen}
-          onClick={() => setIsMobileMenuOpen(true)}
+          icon={<Sparkles size={20} />}
+          label="화장품"
+          active={view === 'list' && currentCategory === '화장품'}
+          onClick={() => navigateTo('list', '화장품')}
+        />
+        <BottomTabItem
+          icon={<ShoppingCart size={20} />}
+          label="위시"
+          active={view === 'wishlist'}
+          onClick={() => setView('wishlist')}
         />
       </nav>
 

@@ -410,6 +410,20 @@ export const updateInventoryItem = async ({ item, updates, selectedPlace }) => {
   return fetchInventory(selectedPlace);
 };
 
+export const deleteInventoryItems = async ({ itemIds, selectedPlace }) => {
+  const user = await getCurrentUser();
+
+  const { error } = await supabase
+    .from('inventories')
+    .delete()
+    .in('id', itemIds)
+    .eq('user_id', user.id);
+
+  if (error) throw error;
+
+  return fetchInventory(selectedPlace);
+};
+
 export const consumeInventoryItem = async ({ item, amount = 1, selectedPlace }) => {
   const user = await getCurrentUser();
   const consumeAmount = Number(amount) || 1;

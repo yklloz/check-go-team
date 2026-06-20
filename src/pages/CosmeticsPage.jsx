@@ -9,6 +9,7 @@ export default function CosmeticsPage({
   onAddWishlist,
   onUpdateItem,
   onConsumeItem,
+  onDeleteItems,
 }) {
   const filteredData = inventory.filter(item => item.category === '화장품');
 
@@ -31,6 +32,7 @@ export default function CosmeticsPage({
           onAddWishlist={onAddWishlist}
           onUpdateItem={onUpdateItem}
           onConsumeItem={onConsumeItem}
+          onDeleteItems={onDeleteItems}
         />
         {filteredData.length === 0 && (
           <div className="p-32 text-center">

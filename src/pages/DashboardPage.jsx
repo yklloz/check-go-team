@@ -1,14 +1,46 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, Share2, Users } from 'lucide-react';
 import StatCard from '../components/StatCard';
+import { supabase } from '../supabaseClient';
 
 export default function DashboardPage({ selectedPlace }) {
+  const [lowStockCount, setLowStockCount] = useState(0);
+  const [monthlyExpense, setMonthlyExpense] = useState(0);
+  console.log("[현재 선택된 장소 확인]:", selectedPlace);
+
+  useEffect(() => {
+    if (selectedPlace) {
+      fetchDashboardData();
+    }
+  }, [selectedPlace]);
+
+  const fetchDashboardData = async () => {
+    try {
+      const { count, error: stockError } = await supabase
+        .from('inventories')
+        .select('*', { count: 'exact', head: true })
+        .eq('place_id', selectedPlace.id)
+        .lte('current_quantity', 1);
+
+      if (!stockError && count !== null) {
+        setLowStockCount(count);
+      } else if (stockError) {
+        console.error('[재고 부족 쿼리 에러]:', stockError.message);
+      }
+    } catch (error) {
+      console.error('대시보드 데이터 연동 실패:', error);
+    }
+  };
+
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl md:text-3xl font-black tracking-tight">{selectedPlace?.name}에 어떤 게 필요하신가요?</h1>
+    <div className="space-y-10">
+      <div className="flex justify-between items-end">
+        <div className="space-y-1">
+          <p className="text-xs text-blue-500 font-black uppercase tracking-widest">Home</p>
+          <h1 className="text-4xl font-black tracking-tight">{selectedPlace?.name}에 어떤 게 필요하신가요?</h1>
+        </div>
         {selectedPlace?.isShared && (
-          <button className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all flex-shrink-0">
+          <button className="flex items-center gap-2 px-5 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all">
             <Share2 size={18} />
             멤버 초대
           </button>
@@ -16,9 +48,26 @@ export default function DashboardPage({ selectedPlace }) {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard title="재고 부족" value="4개" color="text-red-500" description="서둘러 구매가 필요해요" />
-        <StatCard title="유통기한 임박" value="2개" color="text-amber-500" description="오늘 저녁 메뉴로 어때요?" />
-        <StatCard title="월 지출액" value="₩124,500" color="text-blue-500" description="전월 대비 12,000원 절약 중" />
+        <StatCard 
+          title="재고 부족" 
+          value={`${lowStockCount}개`} 
+          color="text-red-500" 
+          description="서둘러 구매가 필요해요" 
+        />
+        
+        <StatCard 
+          title="유통기한 임박" 
+          value="2개" 
+          color="text-amber-500" 
+          description="오늘 저녁 메뉴로 어때요?" 
+        />
+        
+        <StatCard 
+          title="월 지출액" 
+          value={`₩${monthlyExpense.toLocaleString()}`}
+          color="text-blue-500" 
+          description="이번 달 재고 구매 비용" 
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

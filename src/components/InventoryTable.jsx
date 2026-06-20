@@ -86,17 +86,17 @@ export default function InventoryTable({ data, onAddWishlist, onUpdateItem, onCo
   };
 
   return (
-    <div>
+    <div className="relative">
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-5 md:px-8 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/40">
-          <span className="text-sm font-black text-blue-600 dark:text-blue-400">
+        <div className="absolute top-3 right-4 md:right-6 z-10 flex items-center gap-2">
+          <span className="text-xs font-black text-gray-400 dark:text-gray-500">
             {selectedIds.size}개 선택됨
           </span>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black transition-all shadow-lg shadow-red-500/20"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-black transition-all shadow-lg shadow-red-500/20"
           >
-            <Trash2 size={13} />
+            <Trash2 size={12} />
             선택 삭제
           </button>
         </div>

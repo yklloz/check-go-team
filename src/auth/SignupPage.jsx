@@ -6,6 +6,8 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState('');
 
   // 회원가입 로직 (중복 제거 및 최적화)
   const handleSignup = async () => {
@@ -13,6 +15,8 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
       alert("모든 정보를 입력해주세요.");
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -40,6 +44,36 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
     } catch (error) {
       console.error("통신 에러:", error);
       alert("서버 연결에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleOAuthSignup = async (provider) => {
+    setOauthProvider(provider);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error('OAuth 이동 URL을 받지 못했습니다. Supabase Provider 설정을 확인해주세요.');
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
+      console.error(`${provider} 회원가입 오류:`, error);
+      alert(`${provider} 회원가입 실패: ${error.message}`);
+      setOauthProvider('');
     }
   };
 
@@ -56,7 +90,43 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
 
         <div className="text-center mb-8">
           <h1 className="text-3xl font-black tracking-tight mb-2">계정 생성</h1>
-          <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">이름, 이메일, 비밀번호를 입력해주세요.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">소셜 계정 또는 이메일로 시작하세요.</p>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <button
+            onClick={() => handleOAuthSignup('google')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Google 회원가입"
+          >
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="" />
+          </button>
+          <button
+            onClick={() => handleOAuthSignup('kakao')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Kakao 회원가입"
+          >
+            <span className="text-[#3C1E1E] font-bold text-xs tracking-tighter">TALK</span>
+          </button>
+          <button
+            onClick={() => handleOAuthSignup('apple')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Apple 회원가입"
+          >
+            <span className="font-bold text-sm"></span>
+          </button>
+        </div>
+
+        <div className="relative mb-8">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase font-bold">
+            <span className="bg-white dark:bg-[#1E1E1E] px-2 text-gray-400">또는</span>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -95,9 +165,10 @@ const SignupPage = ({ setView, onSignupSuccess }) => {
 
           <button 
             onClick={handleSignup}
+            disabled={isSubmitting}
             className="w-full py-4 bg-black text-white rounded-xl font-black hover:bg-gray-900 transition-all mt-4 shadow-lg shadow-black/20 uppercase tracking-widest"
           >
-            회원 가입
+            {isSubmitting ? '가입 중...' : '이메일로 회원 가입'}
           </button>
         </div>
       </div>

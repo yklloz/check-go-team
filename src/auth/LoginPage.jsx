@@ -6,6 +6,7 @@ const LoginPage = ({ setView }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [oauthProvider, setOauthProvider] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -36,15 +37,30 @@ const LoginPage = ({ setView }) => {
   };
 
   const handleOAuthLogin = async (provider) => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: window.location.origin,
-      },
-    });
+    setOauthProvider(provider);
 
-    if (error) {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (!data?.url) {
+        throw new Error('OAuth 이동 URL을 받지 못했습니다. Supabase Provider 설정을 확인해주세요.');
+      }
+
+      window.location.assign(data.url);
+    } catch (error) {
+      console.error(`${provider} 로그인 오류:`, error);
       alert(`${provider} 로그인 실패: ${error.message}`);
+      setOauthProvider('');
     }
   };
 
@@ -98,13 +114,28 @@ const LoginPage = ({ setView }) => {
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-8">
-          <button onClick={() => handleOAuthLogin('google')} className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+          <button
+            onClick={() => handleOAuthLogin('google')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 border border-gray-200 dark:border-gray-700 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Google 로그인"
+          >
             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" className="w-5 h-5" alt="Google" />
           </button>
-          <button onClick={() => handleOAuthLogin('kakao')} className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 transition-all">
+          <button
+            onClick={() => handleOAuthLogin('kakao')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 bg-[#FEE500] rounded-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Kakao 로그인"
+          >
             <span className="text-[#3C1E1E] font-bold text-xs tracking-tighter">TALK</span>
           </button>
-          <button onClick={() => handleOAuthLogin('apple')} className="flex justify-center items-center py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 transition-all">
+          <button
+            onClick={() => handleOAuthLogin('apple')}
+            disabled={!!oauthProvider}
+            className="flex justify-center items-center py-3 bg-black text-white dark:bg-white dark:text-black rounded-xl hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+            aria-label="Apple 로그인"
+          >
             <span className="font-bold text-sm"></span>
           </button>
         </div>

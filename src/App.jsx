@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Settings } from 'lucide-react';
 
 import { supabase } from './supabaseClient';
@@ -36,6 +36,7 @@ export default function App() {
   const [inventoryError, setInventoryError] = useState('');
   const [wishlistRefreshKey, setWishlistRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const currentUserIdRef = useRef(null);
   const [view, setView] = useState(() => {
     const savedView = localStorage.getItem('currentView');
     return savedView ? savedView : 'login';
@@ -66,17 +67,65 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session && view === 'login') {
-        setView(selectedPlace ? 'dashboard' : 'place-select');
+      const sessionUserId = data.session?.user?.id || null;
+      const savedUserId = localStorage.getItem('authUserId');
+      const isStoredUserChanged = Boolean(sessionUserId && savedUserId && savedUserId !== sessionUserId);
+      currentUserIdRef.current = sessionUserId;
+
+      if (isStoredUserChanged) {
+        setSelectedPlace(null);
+        setInventory([]);
+        setInventoryError('');
+        localStorage.removeItem('selectedPlace');
+        localStorage.setItem('currentView', 'place-select');
+      }
+
+      if (sessionUserId) {
+        localStorage.setItem('authUserId', sessionUserId);
+      } else {
+        localStorage.removeItem('authUserId');
+      }
+
+      if (data.session && (view === 'login' || view === 'signup')) {
+        setView(!isStoredUserChanged && selectedPlace ? 'dashboard' : 'place-select');
       } else if (!data.session && view !== 'login' && view !== 'signup') {
+        setSelectedPlace(null);
+        setInventory([]);
+        setInventoryError('');
+        localStorage.removeItem('selectedPlace');
         setView('login');
       }
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session && view === 'login') {
-        setView(selectedPlace ? 'dashboard' : 'place-select');
+      const nextUserId = session?.user?.id || null;
+      const previousUserId = currentUserIdRef.current;
+      const isUserChanged = Boolean(previousUserId && nextUserId && previousUserId !== nextUserId);
+
+      if (isUserChanged) {
+        setSelectedPlace(null);
+        setInventory([]);
+        setInventoryError('');
+        localStorage.removeItem('selectedPlace');
+        localStorage.setItem('currentView', 'place-select');
+        setView('place-select');
+      }
+
+      currentUserIdRef.current = nextUserId;
+
+      if (nextUserId) {
+        localStorage.setItem('authUserId', nextUserId);
+      } else {
+        localStorage.removeItem('authUserId');
+      }
+
+      if (session && (view === 'login' || view === 'signup')) {
+        setView(!isUserChanged && selectedPlace ? 'dashboard' : 'place-select');
       } else if (!session && view !== 'login' && view !== 'signup') {
+        setSelectedPlace(null);
+        setInventory([]);
+        setInventoryError('');
+        localStorage.removeItem('selectedPlace');
         setView('login');
       }
     });
@@ -193,7 +242,9 @@ export default function App() {
     setInventory([]);
     setInventoryError('');
     setIsSidePanelOpen(false);
+    currentUserIdRef.current = null;
     localStorage.removeItem('selectedPlace');
+    localStorage.removeItem('authUserId');
     localStorage.setItem('currentView', 'login');
     setView('login');
   };
@@ -209,8 +260,6 @@ export default function App() {
       <SignupPage 
         setView={setView} 
         onSignupSuccess={() => {
-          // 실제 개발 시에는 여기에 회원가입 API 연동 로직이 들어감
-          alert('가입이 완료되었습니다! 로그인해주세요.');
           setView('login');
         }} 
       />

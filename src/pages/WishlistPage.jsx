@@ -26,7 +26,21 @@ export default function WishlistPage({ PLACES }) {
   };
 
   useEffect(() => {
-    fetchWishlist();
+    let isMounted = true;
+
+    supabase
+      .from('wishlist_items')
+      .select('*')
+      .order('created_at', { ascending: true })
+      .then(({ data, error }) => {
+        if (!isMounted) return;
+        if (error) console.error('위시리스트 불러오기 실패:', error);
+        else setWishlistItems(data || []);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // 2. 폼 열기 (추가 모드)

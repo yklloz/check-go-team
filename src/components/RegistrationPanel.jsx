@@ -244,7 +244,7 @@ export default function RegistrationPanel({
   const grandTotal = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
 
   return (
-    <div className={`fixed inset-y-0 right-0 w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+    <div className={`fixed inset-y-0 right-0 w-full md:w-[500px] bg-white dark:bg-[#181818] shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-none z-50 transform transition-transform duration-500 ease-in-out border-l border-gray-100 dark:border-[#2F2F2F] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
       
       <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-50 dark:border-[#2F2F2F]">
         <div>

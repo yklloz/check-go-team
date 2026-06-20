@@ -232,6 +232,8 @@ export default function App() {
     setView,
     navigateTo,
     selectedPlace,
+    setSelectedPlace,
+    places: PLACES,
     isDarkMode,
     setIsDarkMode,
     isSidePanelOpen,

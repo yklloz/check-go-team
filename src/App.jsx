@@ -14,7 +14,7 @@ import GroceryPage from './pages/GroceryPage';
 import EssentialsPage from './pages/DailySuppliesPage';
 import CosmeticsPage from './pages/CosmeticsPage';
 import LowStockPage from './LowStockPage';
-import { consumeInventoryItem, fetchInventory, updateInventoryItem } from './services/inventoryService';
+import { consumeInventoryItem, deleteInventoryItems, fetchInventory, updateInventoryItem } from './services/inventoryService';
 import { addWishlistItem } from './services/wishlistService';
 
 import { PLACES } from './data/mockData';
@@ -184,6 +184,19 @@ export default function App() {
     }
   };
 
+  const handleDeleteInventoryItems = async (items) => {
+    try {
+      const nextInventory = await deleteInventoryItems({
+        itemIds: items.map(i => i.id),
+        selectedPlace,
+      });
+      setInventory(nextInventory);
+    } catch (error) {
+      console.error('삭제 실패:', error);
+      throw error;
+    }
+  };
+
   const handleConsumeInventoryItem = async (item) => {
     try {
       const nextInventory = await consumeInventoryItem({
@@ -318,6 +331,7 @@ export default function App() {
             onAddWishlist={handleAddInventoryItemToWishlist}
             onUpdateItem={handleUpdateInventoryItem}
             onConsumeItem={handleConsumeInventoryItem}
+            onDeleteItems={handleDeleteInventoryItems}
           />
         )}
         {currentCategory === '생필품' && (
@@ -328,6 +342,7 @@ export default function App() {
             onAddWishlist={handleAddInventoryItemToWishlist}
             onUpdateItem={handleUpdateInventoryItem}
             onConsumeItem={handleConsumeInventoryItem}
+            onDeleteItems={handleDeleteInventoryItems}
           />
         )}
         {currentCategory === '화장품' && (
@@ -338,6 +353,7 @@ export default function App() {
             onAddWishlist={handleAddInventoryItemToWishlist}
             onUpdateItem={handleUpdateInventoryItem}
             onConsumeItem={handleConsumeInventoryItem}
+            onDeleteItems={handleDeleteInventoryItems}
           />
         )}
       </Layout>

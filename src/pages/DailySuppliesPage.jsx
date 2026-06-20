@@ -9,6 +9,7 @@ export default function EssentialsPage({
   onAddWishlist,
   onUpdateItem,
   onConsumeItem,
+  onDeleteItems,
 }) {
   const filteredData = inventory.filter(item => item.category === '생필품');
 
@@ -31,6 +32,7 @@ export default function EssentialsPage({
           onAddWishlist={onAddWishlist}
           onUpdateItem={onUpdateItem}
           onConsumeItem={onConsumeItem}
+          onDeleteItems={onDeleteItems}
         />
         {filteredData.length === 0 && (
           <div className="p-32 text-center">

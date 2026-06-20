@@ -9,6 +9,7 @@ export default function GroceryPage({
   onAddWishlist,
   onUpdateItem,
   onConsumeItem,
+  onDeleteItems,
 }) {
   const filteredData = inventory.filter(item => item.category === '식료품');
 
@@ -31,6 +32,7 @@ export default function GroceryPage({
           onAddWishlist={onAddWishlist}
           onUpdateItem={onUpdateItem}
           onConsumeItem={onConsumeItem}
+          onDeleteItems={onDeleteItems}
         />
         {filteredData.length === 0 && (
           <div className="p-32 text-center">

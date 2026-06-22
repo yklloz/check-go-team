@@ -117,6 +117,7 @@ const DAILY_SUPPLIES_KEYWORDS = [
   '수세미',
   '키친타월',
   '쓰레기봉투',
+  '비닐봉투',
   '건전지',
   '마스크',
   '생활용품',
@@ -288,6 +289,134 @@ const getGeneralOcrText = (image: JsonRecord) => {
   return text.trim();
 };
 
+const fieldPosition = (field: JsonRecord) => {
+  const vertices = asArray(asRecord(field.boundingPoly).vertices)
+    .map(asRecord)
+    .filter(
+      (vertex) =>
+        Number.isFinite(Number(vertex.x)) && Number.isFinite(Number(vertex.y)),
+    );
+
+  if (vertices.length === 0) return null;
+
+  return {
+    x:
+      vertices.reduce((sum, vertex) => sum + Number(vertex.x), 0) /
+      vertices.length,
+    y:
+      vertices.reduce((sum, vertex) => sum + Number(vertex.y), 0) /
+      vertices.length,
+  };
+};
+
+const parsePositionedReceiptItems = (image: JsonRecord): ReceiptItem[] => {
+  const fields = asArray(image.fields)
+    .map((rawField) => {
+      const field = asRecord(rawField);
+      const text = textOf(field.inferText);
+      const position = fieldPosition(field);
+      return text && position ? { text, ...position } : null;
+    })
+    .filter(
+      (
+        field,
+      ): field is {
+        text: string;
+        x: number;
+        y: number;
+      } => field !== null,
+    );
+  const nameHeader = fields.find((field) => /상품\s*명/.test(field.text));
+  const quantityHeader = fields.find((field) => /수량/.test(field.text));
+  const amountHeader = fields.find((field) => /금액/.test(field.text));
+
+  if (!nameHeader || !quantityHeader || !amountHeader) return [];
+
+  const summaryY =
+    fields
+      .filter(
+        (field) =>
+          field.y > nameHeader.y + 20 &&
+          /(과세물품|공급가액|부가세|합계|결제금액)/.test(field.text),
+      )
+      .sort((left, right) => left.y - right.y)[0]?.y ??
+    Number.POSITIVE_INFINITY;
+  const quantityColumnX = quantityHeader.x;
+  const amountColumnX = amountHeader.x;
+  const amountBoundaryX = (quantityColumnX + amountColumnX) / 2;
+  const ignoredNamePattern =
+    /^(?:행사|증정|할인|상품명|수량|금액|과세물품가액|공급가액|부가세|합계|현금)$/;
+  const nameFields = fields
+    .filter(
+      (field) =>
+        field.y > nameHeader.y + 20 &&
+        field.y < summaryY &&
+        field.x < quantityColumnX - 5 &&
+        /[가-힣A-Za-z]/.test(field.text) &&
+        !ignoredNamePattern.test(field.text) &&
+        !/^[*#]?\d{6,}$/.test(field.text.replace(/\s/g, '')),
+    )
+    .sort((left, right) => left.y - right.y || left.x - right.x);
+  const nameRows: (typeof nameFields)[] = [];
+
+  for (const field of nameFields) {
+    const currentRow = nameRows[nameRows.length - 1];
+    if (currentRow && Math.abs(currentRow[0].y - field.y) <= 10) {
+      currentRow.push(field);
+    } else {
+      nameRows.push([field]);
+    }
+  }
+
+  return nameRows.flatMap((row): ReceiptItem[] => {
+    const rowY = row.reduce((sum, field) => sum + field.y, 0) / row.length;
+    const name = row
+      .sort((left, right) => left.x - right.x)
+      .map((field) => field.text)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const quantityField = fields
+      .filter(
+        (field) =>
+          field.y >= rowY - 5 &&
+          field.y <= rowY + 35 &&
+          Math.abs(field.x - quantityColumnX) <= 40 &&
+          /^\d+(?:\.\d+)?$/.test(field.text),
+      )
+      .sort(
+        (left, right) => Math.abs(left.y - rowY) - Math.abs(right.y - rowY),
+      )[0];
+    const amountField = fields
+      .filter(
+        (field) =>
+          field.y >= rowY - 5 &&
+          field.y <= rowY + 35 &&
+          field.x > amountBoundaryX &&
+          /^[₩￦]?\s*\d[\d,]*$/.test(field.text),
+      )
+      .sort(
+        (left, right) => Math.abs(left.y - rowY) - Math.abs(right.y - rowY),
+      )[0];
+    const quantity = Math.max(numberOf(quantityField?.text) || 1, 1);
+    const lineTotal = numberOf(amountField?.text);
+
+    if (!name || !lineTotal) return [];
+
+    return [
+      {
+        name,
+        brand: '',
+        category: classifyProductCategory(name),
+        quantity,
+        unit: '개',
+        price: Math.round(lineTotal / quantity),
+        lineTotal,
+      },
+    ];
+  });
+};
+
 export const normalizeClovaReceipt = (response: unknown): ReceiptResult => {
   const root = asRecord(response);
   const image = asRecord(asArray(root.images)[0]);
@@ -342,12 +471,19 @@ export const normalizeClovaReceipt = (response: unknown): ReceiptResult => {
     paymentInfo.date ?? paymentInfo.confirmedDate ?? result.paymentDate,
   );
   const generalResult =
-    !shop && !purchasedAt && items.length === 0
+    !shop || !purchasedAt || items.length === 0
       ? parseReceiptText(getGeneralOcrText(image))
       : null;
+  const positionedItems =
+    items.length === 0 ? parsePositionedReceiptItems(image) : [];
   const normalizedShop = shop || generalResult?.shop || '';
   const normalizedPurchasedAt = purchasedAt || generalResult?.purchasedAt || '';
-  const normalizedItems = items.length > 0 ? items : generalResult?.items || [];
+  const normalizedItems =
+    items.length > 0
+      ? items
+      : positionedItems.length > 0
+        ? positionedItems
+        : generalResult?.items || [];
   const warnings: string[] = [];
 
   if (!normalizedShop) warnings.push('매장명을 찾지 못했습니다.');

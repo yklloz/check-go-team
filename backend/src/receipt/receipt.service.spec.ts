@@ -159,6 +159,83 @@ describe('CLOVA receipt response normalizer', () => {
       warnings: [],
     });
   });
+
+  it('parses convenience-store columns using OCR field positions', () => {
+    const field = (inferText: string, x: number, y: number) => ({
+      inferText,
+      lineBreak: true,
+      boundingPoly: {
+        vertices: [
+          { x: x - 5, y: y - 5 },
+          { x: x + 5, y: y - 5 },
+          { x: x + 5, y: y + 5 },
+          { x: x - 5, y: y + 5 },
+        ],
+      },
+    });
+
+    expect(
+      normalizeClovaReceipt({
+        images: [
+          {
+            inferResult: 'SUCCESS',
+            receipt: {
+              result: {
+                storeInfo: { name: { text: '세계 1등 편의점' } },
+                paymentInfo: { date: { text: '2020-06-09' } },
+              },
+            },
+            fields: [
+              field('상품명', 120, 330),
+              field('수량', 300, 330),
+              field('금액', 420, 330),
+              field('라라스윗)바닐라파인트474', 190, 381),
+              field('행사', 430, 375),
+              field('1', 300, 401),
+              field('6,900', 423, 399),
+              field('8809599360081', 130, 408),
+              field('라라스윗)초코파인트474ml', 190, 430),
+              field('행사', 430, 424),
+              field('1', 300, 452),
+              field('6,900', 424, 449),
+              field('8809599360104', 130, 456),
+              field('비닐봉투', 90, 482),
+              field('보증금', 190, 479),
+              field('20원', 265, 477),
+              field('1', 300, 500),
+              field('20', 446, 496),
+              field('과세물품가액', 230, 526),
+            ],
+          },
+        ],
+      }),
+    ).toMatchObject({
+      shop: '세계 1등 편의점',
+      purchasedAt: '2020-06-09',
+      items: [
+        {
+          name: '라라스윗)바닐라파인트474',
+          quantity: 1,
+          price: 6900,
+          lineTotal: 6900,
+        },
+        {
+          name: '라라스윗)초코파인트474ml',
+          quantity: 1,
+          price: 6900,
+          lineTotal: 6900,
+        },
+        {
+          name: '비닐봉투 보증금 20원',
+          category: '생필품',
+          quantity: 1,
+          price: 20,
+          lineTotal: 20,
+        },
+      ],
+      warnings: [],
+    });
+  });
 });
 
 describe('product category classifier', () => {

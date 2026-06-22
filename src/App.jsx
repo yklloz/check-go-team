@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings } from 'lucide-react';
+import { Settings, Home, School, Briefcase, Building2, TreePine, Car, Heart, Star, Coffee } from 'lucide-react';
+
+const ICON_MAP = {
+  Home:      { icon: <Home size={48} />,      smallIcon: <Home size={18} /> },
+  School:    { icon: <School size={48} />,    smallIcon: <School size={18} /> },
+  Briefcase: { icon: <Briefcase size={48} />, smallIcon: <Briefcase size={18} /> },
+  Building2: { icon: <Building2 size={48} />, smallIcon: <Building2 size={18} /> },
+  TreePine:  { icon: <TreePine size={48} />,  smallIcon: <TreePine size={18} /> },
+  Car:       { icon: <Car size={48} />,       smallIcon: <Car size={18} /> },
+  Heart:     { icon: <Heart size={48} />,     smallIcon: <Heart size={18} /> },
+  Star:      { icon: <Star size={48} />,      smallIcon: <Star size={18} /> },
+  Coffee:    { icon: <Coffee size={48} />,    smallIcon: <Coffee size={18} /> },
+};
 
 import { supabase } from './supabaseClient';
 
@@ -17,12 +29,40 @@ import LowStockPage from './LowStockPage';
 import { consumeInventoryItem, deleteInventoryItems, fetchInventory, updateInventoryItem } from './services/inventoryService';
 import { addWishlistItem } from './services/wishlistService';
 
-import { PLACES } from './data/mockData';
+import { PLACES as DEFAULT_PLACES } from './data/mockData';
 
 
 
 // --- 메인 컴포넌트 ---
 export default function App() {
+  const [places, setPlaces] = useState(() => {
+    try {
+      const saved = localStorage.getItem('userPlaces');
+      const userPlaces = saved
+        ? JSON.parse(saved).map(p => ({ ...p, ...(ICON_MAP[p.iconKey] || ICON_MAP.Home) }))
+        : [];
+      return [...DEFAULT_PLACES, ...userPlaces];
+    } catch {
+      return DEFAULT_PLACES;
+    }
+  });
+
+  const addPlace = ({ name, iconKey, color }) => {
+    const newPlace = { id: Date.now(), name, iconKey, color, isShared: false };
+    const withIcons = { ...newPlace, ...(ICON_MAP[iconKey] || ICON_MAP.Home) };
+    setPlaces(prev => [...prev, withIcons]);
+    const saved = localStorage.getItem('userPlaces');
+    const existing = saved ? JSON.parse(saved) : [];
+    localStorage.setItem('userPlaces', JSON.stringify([...existing, newPlace]));
+  };
+
+  const deletePlace = (id) => {
+    setPlaces(prev => prev.filter(p => p.id !== id));
+    const saved = localStorage.getItem('userPlaces');
+    const existing = saved ? JSON.parse(saved) : [];
+    localStorage.setItem('userPlaces', JSON.stringify(existing.filter(p => p.id !== id)));
+  };
+
   const [currentCategory, setCurrentCategory] = useState(() => {
     const savedCategory = localStorage.getItem('currentCategory');
     return savedCategory ? savedCategory : 'all';
@@ -281,10 +321,12 @@ export default function App() {
 
   if (view === 'place-select') {
     return (
-      <PlaceSelectPage 
-        setSelectedPlace={setSelectedPlace} 
-        setView={setView} 
-        PLACES={PLACES} 
+      <PlaceSelectPage
+        setSelectedPlace={setSelectedPlace}
+        setView={setView}
+        PLACES={places}
+        addPlace={addPlace}
+        deletePlace={deletePlace}
       />
     );
   }
@@ -295,7 +337,7 @@ export default function App() {
     navigateTo,
     selectedPlace,
     setSelectedPlace,
-    places: PLACES,
+    places: places,
     isDarkMode,
     setIsDarkMode,
     isSidePanelOpen,
@@ -363,8 +405,8 @@ export default function App() {
   if (view === 'wishlist') {
     return (
       <Layout {...layoutProps}>
-        <WishlistPage 
-          PLACES={PLACES} 
+        <WishlistPage
+          PLACES={places}
           wishlistRefreshKey={wishlistRefreshKey}
         />
       </Layout>

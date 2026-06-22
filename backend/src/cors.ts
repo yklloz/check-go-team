@@ -18,9 +18,11 @@ export const isAllowedOrigin = (origin?: string) => {
   try {
     const { hostname, protocol } = new URL(origin);
     return (
-      protocol === 'https:' &&
-      hostname.startsWith('check-go-') &&
-      hostname.endsWith('-ykllozs-projects.vercel.app')
+      (protocol === 'https:' &&
+        hostname.startsWith('check-go-') &&
+        hostname.endsWith('-ykllozs-projects.vercel.app')) ||
+      (protocol === 'https:' && hostname.endsWith('.ngrok-free.app')) ||
+      (protocol === 'https:' && hostname.endsWith('.ngrok.io'))
     );
   } catch {
     return false;

@@ -12,6 +12,8 @@ const DISPLAY_CATEGORY_NAME_MAP = {
   '화장품': '화장품',
 };
 
+const RECEIPT_BUCKET = 'receipt-images';
+
 const getCurrentUser = async () => {
   const { data, error } = await supabase.auth.getUser();
 
@@ -264,7 +266,53 @@ const getOrCreateProduct = async (item) => {
   return data;
 };
 
-export const createInventoryItems = async ({ items, commonData, selectedPlace }) => {
+const getReceiptExtension = (file) => {
+  const fileExtension = file.name?.split('.').pop()?.toLowerCase();
+  if (fileExtension && /^[a-z0-9]+$/.test(fileExtension)) return fileExtension;
+
+  const mimeExtension = file.type?.split('/')[1]?.toLowerCase();
+  return mimeExtension === 'jpeg' ? 'jpg' : mimeExtension || 'jpg';
+};
+
+const uploadReceiptImage = async ({ file, userId, purchasedAt }) => {
+  if (!file) return null;
+
+  const purchasedYear = purchasedAt?.slice(0, 4) || new Date().getFullYear().toString();
+  const extension = getReceiptExtension(file);
+  const objectPath = `${userId}/${purchasedYear}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from(RECEIPT_BUCKET)
+    .upload(objectPath, file, {
+      cacheControl: '3600',
+      contentType: file.type || 'image/jpeg',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(`영수증 이미지 저장 실패: ${error.message}`);
+  }
+
+  return objectPath;
+};
+
+const removeReceiptImage = async (objectPath) => {
+  if (!objectPath) return;
+
+  const { error } = await supabase.storage
+    .from(RECEIPT_BUCKET)
+    .remove([objectPath]);
+
+  if (error) {
+    console.error('영수증 이미지 정리 실패:', error);
+  }
+};
+
+export const createInventoryItems = async ({
+  items,
+  commonData,
+  selectedPlace,
+  receiptFile,
+}) => {
   const user = await getCurrentUser();
   const place = await getPlace({ userId: user.id, selectedPlace });
 
@@ -274,6 +322,11 @@ export const createInventoryItems = async ({ items, commonData, selectedPlace })
 
   const store = await getOrCreateStore(commonData.shop?.trim());
   const totalAmount = items.reduce((sum, item) => sum + (Number(item.lineTotal) || 0), 0);
+  const receiptImagePath = await uploadReceiptImage({
+    file: receiptFile,
+    userId: user.id,
+    purchasedAt: commonData.purchasedAt,
+  });
 
   const { data: purchaseOrder, error: orderError } = await supabase
     .from('purchase_orders')
@@ -283,11 +336,15 @@ export const createInventoryItems = async ({ items, commonData, selectedPlace })
       store_id: store?.id || null,
       purchased_at: commonData.purchasedAt,
       total_amount: totalAmount,
+      receipt_image_path: receiptImagePath,
     })
     .select('id')
     .single();
 
-  if (orderError) throw orderError;
+  if (orderError) {
+    await removeReceiptImage(receiptImagePath);
+    throw orderError;
+  }
 
   for (const item of items) {
     const product = await getOrCreateProduct(item);

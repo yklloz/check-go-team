@@ -17,7 +17,8 @@ import {
   X,
   ChevronDown,
   ChevronsLeft,
-  Check
+  Check,
+  Palette
 } from 'lucide-react';
 
 import RegistrationPanel from './RegistrationPanel';
@@ -63,8 +64,6 @@ export default function Layout({
   setIsDarkMode,
   isSidePanelOpen,
   setIsSidePanelOpen,
-  searchQuery,
-  setSearchQuery,
   navigateTo,
   currentCategory,
   onInventoryCreated,
@@ -77,6 +76,7 @@ export default function Layout({
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isPlaceDropdownOpen, setIsPlaceDropdownOpen] = useState(false);
+  const [isGrayscale, setIsGrayscale] = useState(false);
   const mainRef = useRef(null);
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function Layout({
   };
 
   return (
-    <div className="flex h-screen transition-colors duration-200 bg-white text-gray-900 dark:bg-[#121212] dark:text-[#E3E3E3]">
+    <div className={`flex h-screen transition-colors duration-200 bg-white text-gray-900 dark:bg-[#121212] dark:text-[#E3E3E3] ${isGrayscale ? 'grayscale' : ''}`}>
 
       {/* --- 왼쪽 메인 사이드바 (PC 전용) --- */}
       <aside className="hidden md:flex w-64 border-r border-gray-200 dark:border-[#2F2F2F] flex-col bg-[#FBFBFB] dark:bg-[#181818] transition-colors duration-200">

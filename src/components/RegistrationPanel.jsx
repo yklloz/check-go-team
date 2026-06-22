@@ -16,11 +16,16 @@ export default function RegistrationPanel({
   onInventoryCreated,
   onWishlistCreated,
 }) {
-  const receiptInputRef = useRef(null); 
-  const cameraInputRef = useRef(null); 
+  const receiptInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   
   const [isScanning, setIsScanning] = useState(false); 
   const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [autoRegister, setAutoRegister] = useState(true);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const isWishlistMode = mode === 'wishlist';
   const [wishlistPlaces, setWishlistPlaces] = useState([]);
   const [wishlistForm, setWishlistForm] = useState({
@@ -85,22 +90,79 @@ export default function RegistrationPanel({
     loadWishlistOptions();
   }, [isOpen, isWishlistMode, selectedPlace]);
 
-  const handleOcrClick = () => receiptInputRef.current.click();
-  const handleCameraClick = () => cameraInputRef.current.click();
+  useEffect(() => {
+    if (!isCameraOpen) return undefined;
 
-  const handleReceiptUpload = async (e) => {
-    const file = e.target.files[0];
+    let isActive = true;
+
+    const startCamera = async () => {
+      try {
+        setCameraError('');
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error('이 브라우저에서는 카메라 촬영을 지원하지 않습니다.');
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+          },
+          audio: false,
+        });
+
+        if (!isActive) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
+        cameraStreamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+      } catch (error) {
+        console.error('카메라 실행 실패:', error);
+        setCameraError(
+          error.name === 'NotAllowedError'
+            ? '카메라 권한을 허용해주세요.'
+            : error.message || '카메라를 실행하지 못했습니다.',
+        );
+      }
+    };
+
+    startCamera();
+
+    return () => {
+      isActive = false;
+      cameraStreamRef.current?.getTracks().forEach(track => track.stop());
+      cameraStreamRef.current = null;
+    };
+  }, [isCameraOpen]);
+
+  useEffect(() => {
+    if (!isOpen) setIsCameraOpen(false);
+  }, [isOpen]);
+
+  const handleOcrClick = () => receiptInputRef.current.click();
+  const handleCameraClick = () => setIsCameraOpen(true);
+
+  const processReceiptFile = async (file) => {
     if (!file) return;
 
     setIsScanning(true);
+    setReceiptFile(null);
+    let analysisCompleted = false;
 
     try {
       const result = await uploadReceipt(file);
-      
-      setCommonData({
+      analysisCompleted = true;
+      setReceiptFile(file);
+
+      const nextCommonData = {
         shop: result.shop || '', 
         purchasedAt: result.purchasedAt || new Date().toISOString().split('T')[0]
-      });
+      };
+      setCommonData(nextCommonData);
 
       if (result.items && result.items.length > 0) {
         const formattedItems = result.items.map((item, index) => ({
@@ -111,18 +173,75 @@ export default function RegistrationPanel({
           quantity: item.quantity?.toString() || '1',
           unit: item.unit || '개',
           unitPrice: item.price?.toString() || '',
-          lineTotal: ((item.quantity || 1) * (item.price || 0)).toString()
+          lineTotal: (item.lineTotal || ((item.quantity || 1) * (item.price || 0))).toString()
         }));
         setItems(formattedItems);
+
+        if (autoRegister) {
+          setIsSubmitting(true);
+          await createInventoryItems({
+            items: formattedItems,
+            commonData: nextCommonData,
+            selectedPlace,
+            receiptFile: file,
+          });
+          await onInventoryCreated?.(selectedPlace);
+          alert(`${formattedItems.length}개의 물품을 카테고리별로 자동 등록했습니다!`);
+          resetForm();
+          onClose();
+          return;
+        }
+      } else {
+        alert(
+          '영수증 글자는 분석했지만 상품 목록을 찾지 못해 자동 등록하지 않았습니다. 아래에서 품목을 직접 입력해주세요.',
+        );
+        return;
       }
 
       alert('영수증 분석 완료!');
     } catch (error) {
-      console.error('영수증 분석 실패:', error);
-      alert('영수증 분석 중 서버 오류가 발생함.');
+      console.error(analysisCompleted ? '자동 등록 실패:' : '영수증 분석 실패:', error);
+      alert(
+        error.message ||
+          (analysisCompleted
+            ? '영수증은 분석했지만 자동 등록 중 오류가 발생했습니다.'
+            : '영수증 분석 중 오류가 발생했습니다.'),
+      );
     } finally {
-      setIsScanning(false); 
+      setIsScanning(false);
+      setIsSubmitting(false);
     }
+  };
+
+  const handleReceiptUpload = async (event) => {
+    const file = event.target.files[0];
+    event.target.value = '';
+    await processReceiptFile(file);
+  };
+
+  const handleCameraCapture = async () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video?.videoHeight) {
+      setCameraError('카메라 화면이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!blob) {
+      setCameraError('촬영 이미지를 만들지 못했습니다.');
+      return;
+    }
+
+    const file = new File([blob], `receipt-${Date.now()}.jpg`, {
+      type: 'image/jpeg',
+    });
+    setIsCameraOpen(false);
+    await processReceiptFile(file);
   };
 
   const handleCommonChange = (field, value) => {
@@ -178,6 +297,7 @@ export default function RegistrationPanel({
     setItems([
       { id: Date.now(), name: '', brand: '', category: '식료품', quantity: '', unit: '개', unitPrice: '', lineTotal: '' }
     ]);
+    setReceiptFile(null);
   };
 
   // 백엔드 담당자분의 훌륭한 저장 함수!
@@ -192,7 +312,7 @@ export default function RegistrationPanel({
     setIsSubmitting(true);
 
     try {
-      await createInventoryItems({ items, commonData, selectedPlace });
+      await createInventoryItems({ items, commonData, selectedPlace, receiptFile });
       await onInventoryCreated?.(selectedPlace);
       alert(`${items.length}개의 물품 등록 완료!`);
       resetForm();
@@ -276,7 +396,6 @@ export default function RegistrationPanel({
           <>
         
         <input type="file" accept="image/*" className="hidden" ref={receiptInputRef} onChange={handleReceiptUpload} />
-        <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleReceiptUpload} />
 
         <div className={`p-10 border-3 border-dashed rounded-[2rem] flex flex-col items-center justify-center gap-4 transition-all shadow-sm relative overflow-hidden ${isScanning ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20' : 'border-gray-100 dark:border-gray-800 hover:border-blue-400 hover:bg-blue-50/20 dark:hover:bg-blue-900/10 group'}`}>
           {isScanning ? (
@@ -299,16 +418,31 @@ export default function RegistrationPanel({
                 <p className="text-[11px] mt-1 font-medium text-gray-500">한 장의 영수증에서 다수의 물품을 읽어냅니다</p>
               </div>
               <div className="flex gap-3 mt-2 z-10">
-                <button onClick={handleCameraClick} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
+                <button type="button" onClick={handleCameraClick} disabled={isScanning} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 disabled:opacity-60 transition-all shadow-lg shadow-blue-500/20 active:scale-95">
                   <Camera size={14} /> 바로 촬영
                 </button>
-                <button onClick={handleOcrClick} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm active:scale-95">
+                <button type="button" onClick={handleOcrClick} disabled={isScanning} className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 transition-all shadow-sm active:scale-95">
                   <ImagePlus size={14} /> 갤러리
                 </button>
               </div>
             </>
           )}
         </div>
+
+        <label className="flex items-center justify-between gap-4 px-5 py-4 bg-blue-50/60 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-2xl cursor-pointer">
+          <div>
+            <p className="text-sm font-black text-blue-700 dark:text-blue-300">분석 후 자동 등록</p>
+            <p className="text-[11px] mt-1 font-medium text-blue-500/80 dark:text-blue-300/70">
+              품목을 식료품·생필품·화장품으로 분류해 바로 저장합니다.
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            checked={autoRegister}
+            onChange={(event) => setAutoRegister(event.target.checked)}
+            className="w-5 h-5 accent-blue-600 flex-shrink-0"
+          />
+        </label>
 
         <div className="p-6 bg-gray-50 dark:bg-gray-900/50 rounded-3xl border border-gray-100 dark:border-gray-800 space-y-4">
           <div className="flex items-center gap-2 mb-2">
@@ -397,7 +531,7 @@ export default function RegistrationPanel({
               disabled={isSubmitting}
               className="py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-xl shadow-blue-500/20 text-sm uppercase tracking-widest"
             >
-              {isSubmitting ? 'Registering...' : 'Register All'}
+              {isSubmitting ? '저장 중...' : 'Supabase에 저장'}
             </button>
           </div>
         </div>
@@ -405,6 +539,52 @@ export default function RegistrationPanel({
           </>
         )}
       </div>
+
+      {isCameraOpen && (
+        <div className="fixed inset-0 z-[70] bg-black flex flex-col">
+          <div className="flex items-center justify-between px-5 py-4 text-white">
+            <div>
+              <p className="font-black">영수증 촬영</p>
+              <p className="text-xs text-white/60 mt-1">영수증 전체가 화면 안에 들어오게 맞춰주세요.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsCameraOpen(false)}
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20"
+              aria-label="카메라 닫기"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          <div className="relative flex-1 min-h-0 flex items-center justify-center overflow-hidden">
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute inset-6 border-2 border-white/50 rounded-3xl pointer-events-none" />
+            {cameraError && (
+              <div className="absolute inset-x-6 top-6 p-4 bg-red-500/90 text-white text-sm font-bold rounded-2xl">
+                {cameraError}
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 flex justify-center bg-black">
+            <button
+              type="button"
+              onClick={handleCameraCapture}
+              disabled={!!cameraError}
+              className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center disabled:opacity-40"
+              aria-label="영수증 촬영하기"
+            >
+              <span className="w-16 h-16 rounded-full bg-white active:scale-90 transition-transform" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

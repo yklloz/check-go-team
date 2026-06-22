@@ -309,6 +309,90 @@ const fieldPosition = (field: JsonRecord) => {
   };
 };
 
+const parseSequentialColumnItems = (image: JsonRecord): ReceiptItem[] => {
+  const rawFields = asArray(image.fields).map(asRecord);
+  const fields = rawFields
+    .map((field) => textOf(field.inferText))
+    .filter(Boolean);
+  const headerIndex = fields.findIndex((field) => /상품\s*명/.test(field));
+
+  if (headerIndex < 0) return [];
+
+  const headerPositions = rawFields
+    .filter((field) =>
+      /^(?:상품\s*명|단가|수량|금액)$/.test(textOf(field.inferText)),
+    )
+    .map(fieldPosition)
+    .filter(
+      (position): position is { x: number; y: number } => position !== null,
+    );
+
+  if (
+    headerPositions.length >= 3 &&
+    Math.max(...headerPositions.map((position) => position.y)) -
+      Math.min(...headerPositions.map((position) => position.y)) <
+      30
+  ) {
+    return [];
+  }
+
+  const sectionEndIndex = fields.findIndex(
+    (field, index) =>
+      index > headerIndex &&
+      /(매출\s*수량|면세물품|과세물품|부가세액|합계|결제금액|승인내역)/.test(
+        field,
+      ),
+  );
+  const section = fields.slice(
+    headerIndex + 1,
+    sectionEndIndex > headerIndex ? sectionEndIndex : fields.length,
+  );
+  const firstPriceIndex = section.findIndex((field) =>
+    /^\d{1,3}(?:,\d{3})+$/.test(field),
+  );
+
+  if (firstPriceIndex < 2) return [];
+
+  const ignoredFieldPattern = /^(?:단가|수량|금액|,|\.|-)$/;
+  const names = section
+    .slice(0, firstPriceIndex)
+    .filter(
+      (field) =>
+        /[가-힣A-Za-z]/.test(field) &&
+        !ignoredFieldPattern.test(field) &&
+        !/^\d+$/.test(field),
+    )
+    .map((field) => field.replace(/^[*#·-]+\s*/, '').trim())
+    .filter(Boolean);
+  const prices = section
+    .slice(firstPriceIndex)
+    .filter((field) => /^\d{1,3}(?:,\d{3})+$/.test(field))
+    .map(numberOf);
+
+  if (names.length < 2 || prices.length < names.length) return [];
+
+  const hasUnitAndTotalPrices = prices.length >= names.length * 2;
+
+  return names.map((name, index) => {
+    const price = prices[hasUnitAndTotalPrices ? index * 2 : index];
+    const lineTotal = hasUnitAndTotalPrices ? prices[index * 2 + 1] : price;
+    const quantity =
+      price > 0 && lineTotal >= price
+        ? Math.max(Math.round(lineTotal / price), 1)
+        : 1;
+
+    return {
+      name,
+      brand: '',
+      category: classifyProductCategory(name),
+      quantity,
+      unit: '개',
+      price,
+      lineTotal,
+    };
+  });
+};
+
 const parsePositionedReceiptItems = (image: JsonRecord): ReceiptItem[] => {
   const fields = asArray(image.fields)
     .map((rawField) => {
@@ -494,14 +578,18 @@ export const normalizeClovaReceipt = (response: unknown): ReceiptResult => {
       : null;
   const positionedItems =
     items.length === 0 ? parsePositionedReceiptItems(image) : [];
+  const sequentialItems =
+    items.length === 0 ? parseSequentialColumnItems(image) : [];
   const normalizedShop = shop || generalResult?.shop || '';
   const normalizedPurchasedAt = purchasedAt || generalResult?.purchasedAt || '';
   const normalizedItems =
     items.length > 0
       ? items
-      : positionedItems.length > 0
-        ? positionedItems
-        : generalResult?.items || [];
+      : sequentialItems.length > 0
+        ? sequentialItems
+        : positionedItems.length > 0
+          ? positionedItems
+          : generalResult?.items || [];
   const warnings: string[] = [];
 
   if (!normalizedShop) warnings.push('매장명을 찾지 못했습니다.');

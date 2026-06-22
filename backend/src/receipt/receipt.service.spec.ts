@@ -307,6 +307,80 @@ describe('CLOVA receipt response normalizer', () => {
       warnings: [],
     });
   });
+
+  it('pairs sequential names and prices on a strongly tilted receipt', () => {
+    const texts = [
+      '럭키할인마트',
+      '2018-01-07',
+      '상품명',
+      '단가',
+      '수량',
+      '금액',
+      '해표더고소한김16봉',
+      '*깊은산속맑은알30구',
+      '대림/곤약250g',
+      '*연근채',
+      '3,300',
+      ',',
+      '3,300',
+      '4,500',
+      ',',
+      '4,500',
+      '1,000',
+      ',',
+      '1,000',
+      '1,300',
+      ',',
+      '1,300',
+      '매출수량:',
+      '4건/',
+      '4개',
+    ];
+
+    expect(
+      normalizeClovaReceipt({
+        images: [
+          {
+            inferResult: 'SUCCESS',
+            fields: texts.map((inferText) => ({
+              inferText,
+              lineBreak: true,
+            })),
+          },
+        ],
+      }),
+    ).toMatchObject({
+      shop: '럭키할인마트',
+      purchasedAt: '2018-01-07',
+      items: [
+        {
+          name: '해표더고소한김16봉',
+          quantity: 1,
+          price: 3300,
+          lineTotal: 3300,
+        },
+        {
+          name: '깊은산속맑은알30구',
+          quantity: 1,
+          price: 4500,
+          lineTotal: 4500,
+        },
+        {
+          name: '대림/곤약250g',
+          quantity: 1,
+          price: 1000,
+          lineTotal: 1000,
+        },
+        {
+          name: '연근채',
+          quantity: 1,
+          price: 1300,
+          lineTotal: 1300,
+        },
+      ],
+      warnings: [],
+    });
+  });
 });
 
 describe('product category classifier', () => {

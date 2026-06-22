@@ -1,6 +1,8 @@
 const DEFAULT_RECEIPT_API_URL = '/api/receipt/upload';
 const MAX_RECEIPT_SIZE = 4 * 1024 * 1024;
-const REQUEST_TIMEOUT_MS = 30_000;
+const REQUEST_TIMEOUT_MS = 60_000;
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+const MAX_REQUEST_ATTEMPTS = 3;
 
 const parseNumber = (value) => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
@@ -84,19 +86,32 @@ export const validateReceiptFile = (file) => {
 export const uploadReceipt = async (file) => {
   validateReceiptFile(file);
 
-  const formData = new FormData();
-  formData.append('file', file);
-
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   const apiUrl = import.meta.env.VITE_RECEIPT_API_URL || DEFAULT_RECEIPT_API_URL;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      body: formData,
-      signal: controller.signal,
-    });
+    let response;
+
+    for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      });
+
+      if (
+        !RETRYABLE_STATUS_CODES.has(response.status) ||
+        attempt === MAX_REQUEST_ATTEMPTS
+      ) {
+        break;
+      }
+
+      await new Promise(resolve => window.setTimeout(resolve, attempt * 800));
+    }
 
     if (!response.ok) {
       const serverMessage = await readErrorMessage(response);

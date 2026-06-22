@@ -236,6 +236,77 @@ describe('CLOVA receipt response normalizer', () => {
       warnings: [],
     });
   });
+
+  it('parses WinPOS rows when the item-name header is split into fields', () => {
+    const field = (inferText: string, x: number, y: number) => ({
+      inferText,
+      lineBreak: true,
+      boundingPoly: {
+        vertices: [
+          { x: x - 5, y: y - 5 },
+          { x: x + 5, y: y - 5 },
+          { x: x + 5, y: y + 5 },
+          { x: x - 5, y: y + 5 },
+        ],
+      },
+    });
+
+    expect(
+      normalizeClovaReceipt({
+        images: [
+          {
+            inferResult: 'SUCCESS',
+            fields: [
+              field('<<<', 168, 66),
+              field('영수', 331, 66),
+              field('증', 476, 65),
+              field('>>>', 586, 64),
+              field('아이파크할인마트', 381, 147),
+              field('사업자번호:', 126, 185),
+              field('506-18-43477', 309, 183),
+              field('품', 56, 384),
+              field('명', 98, 384),
+              field('단가', 440, 383),
+              field('수량', 520, 383),
+              field('금액', 650, 383),
+              field('말보로라이트', 135, 464),
+              field('2,700', 431, 463),
+              field('1', 527, 461),
+              field('2,700', 639, 463),
+              field('하이브리드1', 127, 504),
+              field('2,700', 431, 503),
+              field('1', 528, 502),
+              field('2,700', 639, 503),
+              field('면세합:', 96, 583),
+              field('0', 672, 580),
+              field('합계:', 151, 741),
+              field('5,400', 599, 739),
+              field('출력일시/계산시:', 168, 898),
+              field('2013-11-29', 392, 897),
+            ],
+          },
+        ],
+      }),
+    ).toMatchObject({
+      shop: '아이파크할인마트',
+      purchasedAt: '2013-11-29',
+      items: [
+        {
+          name: '말보로라이트',
+          quantity: 1,
+          price: 2700,
+          lineTotal: 2700,
+        },
+        {
+          name: '하이브리드1',
+          quantity: 1,
+          price: 2700,
+          lineTotal: 2700,
+        },
+      ],
+      warnings: [],
+    });
+  });
 });
 
 describe('product category classifier', () => {

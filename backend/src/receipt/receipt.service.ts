@@ -154,8 +154,8 @@ const parseReceiptText = (
     .find(
       (line) =>
         /[가-힣A-Za-z]/.test(line) &&
-        !/(주소|대표|사업자|전화|TEL|홈페이지|http|영수증|교환|환불)/i.test(
-          line,
+        !/(주소|대표|사업자|전화|TEL|홈페이지|http|영\s*수(?:\s*증)?|^증$|교환|환불)/i.test(
+          line.replace(/[<>]+/g, ''),
         ),
     );
   const businessStoreCandidate =
@@ -326,18 +326,36 @@ const parsePositionedReceiptItems = (image: JsonRecord): ReceiptItem[] => {
         y: number;
       } => field !== null,
     );
-  const nameHeader = fields.find((field) => /상품\s*명/.test(field.text));
   const quantityHeader = fields.find((field) => /수량/.test(field.text));
   const amountHeader = fields.find((field) => /금액/.test(field.text));
 
-  if (!nameHeader || !quantityHeader || !amountHeader) return [];
+  if (!quantityHeader || !amountHeader) return [];
+
+  const headerFields = fields.filter(
+    (field) => Math.abs(field.y - quantityHeader.y) <= 15,
+  );
+  const headerText = headerFields
+    .sort((left, right) => left.x - right.x)
+    .map((field) => field.text)
+    .join('')
+    .replace(/\s/g, '');
+  const directNameHeader = fields.find((field) => /상품\s*명/.test(field.text));
+  const nameHeader =
+    directNameHeader ??
+    (/품명/.test(headerText)
+      ? headerFields.reduce((left, right) => (left.x < right.x ? left : right))
+      : null);
+
+  if (!nameHeader) return [];
 
   const summaryY =
     fields
       .filter(
         (field) =>
           field.y > nameHeader.y + 20 &&
-          /(과세물품|공급가액|부가세|합계|결제금액)/.test(field.text),
+          /(면세합|과세합|과세물품|공급가액|부가세|합계|결제금액)/.test(
+            field.text,
+          ),
       )
       .sort((left, right) => left.y - right.y)[0]?.y ??
     Number.POSITIVE_INFINITY;
@@ -345,7 +363,7 @@ const parsePositionedReceiptItems = (image: JsonRecord): ReceiptItem[] => {
   const amountColumnX = amountHeader.x;
   const amountBoundaryX = (quantityColumnX + amountColumnX) / 2;
   const ignoredNamePattern =
-    /^(?:행사|증정|할인|상품명|수량|금액|과세물품가액|공급가액|부가세|합계|현금)$/;
+    /^(?:행사|증정|할인|상품명|수량|금액|면세합:?|과세합:?|과세물품가액|공급가액|부가세:?|합계:?|현금:?)$/;
   const nameFields = fields
     .filter(
       (field) =>

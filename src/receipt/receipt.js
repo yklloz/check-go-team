@@ -1,5 +1,8 @@
 const DEFAULT_RECEIPT_API_URL = '/api/receipt/upload';
 const MAX_RECEIPT_SIZE = 4 * 1024 * 1024;
+const MAX_SOURCE_SIZE = 12 * 1024 * 1024;
+const IMAGE_COMPRESSION_THRESHOLD = 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 2000;
 const REQUEST_TIMEOUT_MS = 60_000;
 const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
 const MAX_REQUEST_ATTEMPTS = 3;
@@ -78,13 +81,63 @@ export const validateReceiptFile = (file) => {
   if (!file.type?.startsWith('image/')) {
     throw new Error('JPG, PNG, HEIC 등 이미지 파일만 업로드할 수 있습니다.');
   }
-  if (file.size > MAX_RECEIPT_SIZE) {
-    throw new Error('영수증 이미지는 4MB 이하만 업로드할 수 있습니다.');
+  if (file.size > MAX_SOURCE_SIZE) {
+    throw new Error('영수증 이미지는 12MB 이하만 업로드할 수 있습니다.');
+  }
+};
+
+const compressReceiptImage = async (file) => {
+  if (file.size <= IMAGE_COMPRESSION_THRESHOLD && file.type !== 'image/png') {
+    return file;
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(
+      1,
+      MAX_IMAGE_DIMENSION / Math.max(bitmap.width, bitmap.height),
+    );
+    const width = Math.max(Math.round(bitmap.width * scale), 1);
+    const height = Math.max(Math.round(bitmap.height * scale), 1);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext('2d');
+    if (!context) return file;
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+
+    const blob = await new Promise(resolve =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.85),
+    );
+    if (!blob || blob.size >= file.size) return file;
+
+    return new File(
+      [blob],
+      `${file.name.replace(/\.[^.]+$/, '') || 'receipt'}.jpg`,
+      {
+        type: 'image/jpeg',
+        lastModified: file.lastModified,
+      },
+    );
+  } catch {
+    return file;
   }
 };
 
 export const uploadReceipt = async (file) => {
   validateReceiptFile(file);
+  const uploadFile = await compressReceiptImage(file);
+
+  if (uploadFile.size > MAX_RECEIPT_SIZE) {
+    throw new Error(
+      '이미지 용량을 줄이지 못했습니다. 사진을 조금 작게 잘라 다시 시도해주세요.',
+    );
+  }
 
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -95,7 +148,7 @@ export const uploadReceipt = async (file) => {
 
     for (let attempt = 1; attempt <= MAX_REQUEST_ATTEMPTS; attempt += 1) {
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
 
       response = await fetch(apiUrl, {
         method: 'POST',
